@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON to Armor Code Field Mapper</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>JSON to Armor Code Field Mapper</h1>
+
+    <div class="container">
+        <div class="input-section">
+            <label for="jsonInput">Paste JSON Response:</label>
+            <textarea id="jsonInput" rows="15" placeholder="Paste your JSON data here..."></textarea>
+            <button id="processBtn">Process JSON</button>
+        </div>
+
+        <div class="output-section">
+            <h2>Mapping Results</h2>
+            <div id="outputTableContainer">
+                <!-- Table will be generated here -->
+                <p>Processed results will appear here.</p>
+            </div>
+            <button id="copyBtn" style="display: none;">Copy Table</button>
+            <div id="errorMessages" class="error"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html> 

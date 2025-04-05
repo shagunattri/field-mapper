@@ -1,0 +1,39 @@
+ID,Risk Score,Severity,Status,Summary,Finding Age,Resolution Due Date,Latest Tool Scan Date,Application,Repo,Owner,Ticket ID,Source Tool,Scan Type,Category,EPSS Score,EPSS Percentile,Description,Resurface Date,Finding Score,CVE,CVE Last Modified Date,CVE Published Date,AATI Score,Scan ID,Base Score,Exploitability Score,Impact Score,CWE,Found On,Resolution Due Date Note,Last Confirm Date,Last False +ve Date,Last Open Date,Last Accept Risk Date,Last Suppressed Date,Application Status,Repo Version,Repo Status,Environment,Team,Security Owner,Engagement,Exception Name,Exception ID,Exception Start Date,Exception End Date,Exception Reason,Exception Status,Pentest,Ticket Status,Vendor,Tool Finding ID,Tool Severity,Tool Finding Status,Tool Finding Category,Tags,Component Name,Component Affected Version,Component Fix Version,Fixable Using Tool,Exploit Maturity,Repository,File Name,Developer,Device,URL/Endpoint,Image Name,Compliance,AMC Rule,Last Changed,Last Remediated Date,Exploited,Last Triage Date,Asset Score,IP Addresses,CVSS Vector,EPSS Percentile,CISA KEV,CISA Due Date,CTI Score,Last Seen Date,Triage Due Date,Remediation Due Date,Status Reason,Ticket Assignee,Resolution SLA Status,Applications,Finding URL
+2204988313,424.0,Critical,Open,linux-headers-6.5.0-1020-aws - 6.5.0-1020.20~22.04.1,0 Days,2025-04-11 14:14:44 UTC,2025-04-04 14:14:43 UTC,ArmorCode Partner,evolutility-asp.net,N/A,N/A,SysDig,Container Security,Vulnerability,N/A,N/A,"**Package Type**: os
+
+In the Linux kernel, the following vulnerability has been resolved:
+
+cifs: fix underflow in parse_server_interfaces()
+
+In this loop, we step through the buffer and after each item we check
+if the size_left is greater than the minimum size we need.  However,
+the problem is that ""bytes_left"" is type ssize_t while sizeof() is type
+size_t.  That means that because of type promotion, the comparison is
+done as an unsigned and if we have negative bytes left the loop
+continues instead of ending.
+**Additional cvss scores**: 
+name: [suse](https://www.suse.com/security/cve/CVE-2024-26828.html)
+score: 7.3
+version: 3.1
+vector: AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:H/A:H
+
+name: vulndb
+score: 10.0
+version: 2.0
+vector: AV:N/AC:L/Au:N/C:C/I:C/A:C
+
+name: [opensuse](https://www.suse.com/security/cve/CVE-2024-26828.html)
+score: 7.3
+version: 3.1
+vector: AV:N/AC:L/PR:L/UI:R/S:U/C:N/I:H/A:H
+
+name: [oracle](https://linux.oracle.com/cve/CVE-2024-26828.html)
+score: 6.7
+version: 3.1
+vector: AV:A/AC:L/PR:L/UI:R/S:U/C:N/I:H/A:H
+
+imageName: i-067fb0a07f1340212
+imageId: 1833231bfdbedcc332c0a3e9e7bfd7d1
+**Fixable Since**: Wed Apr 17 10:15:00 UTC 2024
+**Vulnerability Link**: [CVE-2024-26828](https://ubuntu.com/security/CVE-2024-26828)
+",N/A,53.0,CVE-2024-26828,2024-11-21 09:03:00 UTC,2024-04-17 10:15:00 UTC,5.28,51030184,9.8,N/A,N/A,N/A,2025-04-04 14:14:44 UTC,N/A,N/A,N/A,2025-04-04 15:43:54 UTC,N/A,N/A,Active,N/A,Active,Production,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,2547fbe9-fa4c-4f6c-9724-4c77685fea60,Critical,N/A,Vulnerability,,linux-headers-6.5.0-1020-aws,6.5.0-1020.20~22.04.1,N/A,N/A,N/A,N/A,/var/lib/dpkg/status,Not Found,N/A,N/A,i-067fb0a07f1340212,,N/A,2025-04-05 05:14:25 UTC,N/A,false,N/A,8.0,N/A,N/A,41.93%,false,N/A,N/A,2025-04-04 15:43:45 UTC,2025-04-05 14:14:44 UTC,N/A,N/A,N/A,In Progress,N/A,https://app.armorcode.com#/findings/252/985/2204988313
