@@ -1,7 +1,7 @@
 # Field Mapper
 
-A web-based tool for mapping JSON fields to ArmorCode fields. This tool allows users to:
-- Paste JSON data and automatically map fields to ArmorCode schema
+A web-based tool for mapping JSON fields. This tool allows users to:
+- Paste JSON data and automatically map fields
 - Manually adjust mappings through an interactive interface
 - Support multiple mappings for the same JSON key
 - Export mappings in both plain text and HTML formats
