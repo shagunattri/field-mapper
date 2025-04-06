@@ -18,9 +18,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Armor Code Asset Fields ---
     const assetFields = [
-        "ID", "Name", "Type", "OS", "First Seen", "Owner", "Source", "Status",
+        "ID", "Name","Tags", "Type", "OS", "First Seen", "Owner", "Source", "Status", "IP Address",
         "DNS Name", "OS Version", "Cloud Provider", "Cloud Account ID",
-        "Cloud Resource Type", "Location", "Image Repo", "Tags", "Registry",
+        "Cloud Resource Type", "Location", "Image Repo", "Registry",
         "Cluster", "Namespace", "Cloud Resource", "Publicly Accessible", "Region",
         "Runtime", "Architecture", "VPC ID", "Role", "Version", "Storage Type",
         "Engine Version", "Engine", "Instance Status", "Subnet IDs"
@@ -312,7 +312,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Header Row ---
         const headerRow = document.createElement('tr');
-        ['JSON Key', 'JSON Value (Sample)', 'Mapped Armor Code Field'].forEach(text => {
+        ['JSON Key', 'JSON Value (Sample)', 'ArmorCode Field'].forEach(text => {
             const th = document.createElement('th');
             th.textContent = text;
             headerRow.appendChild(th);
@@ -322,29 +322,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Store rows by ArmorCode field for sorting/grouping later if needed
         const rowsByArmorCodeField = {};
-        const unmappedJsonRows = [];
+        const unmappedJsonRowsData = []; // Store data for unmapped JSON rows
+        const placeholderAcRows = []; // Store placeholder row elements
 
-        // --- Populate Rows ---
-        // Add rows for ArmorCode fields that have a mapping in currentMappings
+        // --- Populate Data Structures ---
+        // Group mapped JSON keys by ArmorCode field
         for (const armorField in currentMappings) {
-            const jsonKey = currentMappings[armorField];
+            const jsonKeyOrKeys = currentMappings[armorField];
 
-            if (jsonKey && armorField !== 'Tags') { // Handle single mappings
+            if (jsonKeyOrKeys) { // If mapped
                  if (!rowsByArmorCodeField[armorField]) {
                     rowsByArmorCodeField[armorField] = [];
                 }
-                rowsByArmorCodeField[armorField].push({ jsonKey: jsonKey, armorField: armorField, isMapped: true });
-            } else if (armorField === 'Tags' && Array.isArray(jsonKey) && jsonKey.length > 0) { // Handle Tags array
-                 if (!rowsByArmorCodeField[armorField]) {
-                    rowsByArmorCodeField[armorField] = [];
+                if (Array.isArray(jsonKeyOrKeys)) {
+                    jsonKeyOrKeys.forEach(jk => {
+                         rowsByArmorCodeField[armorField].push({ jsonKey: jk, armorField: armorField, isMapped: true });
+                    });
+                } else { // Single mapping
+                    rowsByArmorCodeField[armorField].push({ jsonKey: jsonKeyOrKeys, armorField: armorField, isMapped: true });
                 }
-                jsonKey.forEach(jk => {
-                    rowsByArmorCodeField[armorField].push({ jsonKey: jk, armorField: armorField, isMapped: true });
-                });
             }
         }
 
-        // Add rows for JSON keys that *weren't* mapped initially
+        // Identify unmapped JSON keys
         const mappedJsonKeysInCurrentMappings = new Set();
         Object.values(currentMappings).forEach(val => {
             if (typeof val === 'string') mappedJsonKeysInCurrentMappings.add(val);
@@ -353,16 +353,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         discoveredJsonKeys.forEach(jsonKey => {
             if (!mappedJsonKeysInCurrentMappings.has(jsonKey)) {
-                unmappedJsonRows.push({ jsonKey: jsonKey, armorField: null, isMapped: false });
+                unmappedJsonRowsData.push({ jsonKey: jsonKey, armorField: null, isMapped: false });
             }
         });
 
-         // --- Generate Table Body ---
-        const createRow = (rowData) => {
+         // --- Helper to Create a Single Row Element ---
+        const createRowElement = (rowData) => {
             const tr = document.createElement('tr');
             const jsonKey = rowData.jsonKey;
-            const mappedField = rowData.armorField; // This is the initially determined or current mapping
-            const sampleValue = flattenedJsonData[jsonKey];
+            const mappedField = rowData.armorField;
+            const sampleValue = flattenedJsonData[jsonKey]; // May be undefined for placeholders
 
             tr.dataset.jsonKey = jsonKey; // Store json key for reference
 
@@ -382,13 +382,37 @@ document.addEventListener('DOMContentLoaded', () => {
             tdMapped.appendChild(createArmorCodeDropdown(mappedField, rowData.isMapped));
             tr.appendChild(tdMapped);
 
-            tbody.appendChild(tr);
+            return tr;
         };
 
-        // --- Render Rows (Categorized for Findings, Flat for Assets) ---
+        // --- Helper to Create Placeholder Row Element ---
+        const createPlaceholderRowElement = (armorField) => {
+             const tr = document.createElement('tr');
+             tr.classList.add('unmapped-ac-row');
+             tr.dataset.jsonKey = `placeholder-for-${armorField}`; // Add a unique identifier
+
+             const tdKey = document.createElement('td');
+             tdKey.appendChild(createPlaceholderJsonKeyDropdown(armorField)); // Dropdown in the first column
+             tr.appendChild(tdKey);
+
+             const tdValue = document.createElement('td');
+             tdValue.textContent = ''; // << CHANGE: Make the value cell blank
+             tr.appendChild(tdValue);
+
+             const tdMapped = document.createElement('td');
+             tdMapped.appendChild(createArmorCodeDropdown(armorField, false)); // Show AC dropdown
+             tr.appendChild(tdMapped);
+
+             return tr;
+        };
+
+        // --- Generate and Append Rows in Order --- //
+
+        // 1. Mapped ArmorCode Fields (Categorized or Flat)
+        const processedMappedFields = new Set(); // Keep track of fields added
         if (currentAttributeType === 'finding') {
-            // Render Finding Attributes (Categorized)
             Object.keys(armorCodeFieldCategories).forEach(category => {
+                // Add category header
                 const categoryHeaderRow = document.createElement('tr');
                 const categoryHeaderCell = document.createElement('th');
                 categoryHeaderCell.colSpan = 3; // Span across all columns
@@ -397,82 +421,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 categoryHeaderRow.appendChild(categoryHeaderCell);
                 tbody.appendChild(categoryHeaderRow);
 
+                // Add rows for this category
                 armorCodeFieldCategories[category].forEach(armorField => {
                     if (rowsByArmorCodeField[armorField]) {
-                        rowsByArmorCodeField[armorField].forEach(createRow);
-                         delete rowsByArmorCodeField[armorField]; // Remove processed field
-                    } else if (currentMappings[armorField] === null) {
-                        // Add placeholder row for unmapped AC fields in this category
-                         const placeholderRowData = { jsonKey: `<i>(No Mapping Found for ${armorField})</i>`, armorField: armorField, isMapped: false };
-                         const tr = document.createElement('tr');
-                         tr.classList.add('unmapped-ac-row');
-
-                         const tdKey = document.createElement('td');
-                         // Place the dropdown in the first column (JSON Key)
-                         tdKey.appendChild(createPlaceholderJsonKeyDropdown(armorField));
-                         tr.appendChild(tdKey);
-
-                         const tdValue = document.createElement('td');
-                         // Put placeholder text in the second column (JSON Value)
-                         tdValue.textContent = '---';
-                         tr.appendChild(tdValue);
-
-                         const tdMapped = document.createElement('td');
-                         tdMapped.appendChild(createArmorCodeDropdown(armorField, false)); // Show dropdown for potential mapping
-                         tr.appendChild(tdMapped);
-                         tbody.appendChild(tr);
+                        rowsByArmorCodeField[armorField].forEach(rowData => {
+                            tbody.appendChild(createRowElement(rowData));
+                        });
+                        processedMappedFields.add(armorField);
                     }
                 });
             });
 
-             // Add a header for remaining mapped fields (e.g., 'Tags' if it wasn't in a category)
-             const remainingMappedFields = Object.keys(rowsByArmorCodeField);
-             if(remainingMappedFields.length > 0){
-                 const remainingHeaderRow = document.createElement('tr');
-                 const remainingHeaderCell = document.createElement('th');
-                 remainingHeaderCell.colSpan = 3;
-                 remainingHeaderCell.textContent = "Other Mapped Fields";
-                 remainingHeaderCell.classList.add('category-header');
-                 remainingHeaderRow.appendChild(remainingHeaderCell);
-                 tbody.appendChild(remainingHeaderRow);
-                 remainingMappedFields.forEach(armorField => {
-                     rowsByArmorCodeField[armorField].forEach(createRow);
-                 });
-             }
-
-
+            // Add remaining mapped fields (e.g., Tags if not in a category)
+            const remainingMappedFields = Object.keys(rowsByArmorCodeField).filter(f => !processedMappedFields.has(f));
+            if (remainingMappedFields.length > 0) {
+                // Add 'Other Mapped Fields' header if needed
+                const remainingHeaderRow = document.createElement('tr');
+                const remainingHeaderCell = document.createElement('th');
+                remainingHeaderCell.colSpan = 3;
+                remainingHeaderCell.textContent = "Other Mapped Fields";
+                remainingHeaderCell.classList.add('category-header');
+                remainingHeaderRow.appendChild(remainingHeaderCell);
+                tbody.appendChild(remainingHeaderRow);
+                remainingMappedFields.forEach(armorField => {
+                    rowsByArmorCodeField[armorField].forEach(rowData => {
+                        tbody.appendChild(createRowElement(rowData));
+                    });
+                    processedMappedFields.add(armorField);
+                });
+            }
         } else {
             // Render Asset Attributes (Flat List)
-             armorCodeFields.forEach(armorField => {
-                 if (rowsByArmorCodeField[armorField]) {
-                     rowsByArmorCodeField[armorField].forEach(createRow);
-                 } else if (currentMappings[armorField] === null) {
-                    // Add placeholder row for unmapped AC fields
-                     const placeholderRowData = { jsonKey: `<i>(No Mapping Found for ${armorField})</i>`, armorField: armorField, isMapped: false };
-                     const tr = document.createElement('tr');
-                     tr.classList.add('unmapped-ac-row');
-
-                     const tdKey = document.createElement('td');
-                     // Place the dropdown in the first column (JSON Key)
-                     tdKey.appendChild(createPlaceholderJsonKeyDropdown(armorField));
-                     tr.appendChild(tdKey);
-
-                     const tdValue = document.createElement('td');
-                      // Put placeholder text in the second column (JSON Value)
-                     tdValue.textContent = '---';
-                     tr.appendChild(tdValue);
-
-                     const tdMapped = document.createElement('td');
-                     tdMapped.appendChild(createArmorCodeDropdown(armorField, false)); // Show dropdown
-                     tr.appendChild(tdMapped);
-                     tbody.appendChild(tr);
-                 }
+            armorCodeFields.forEach(armorField => {
+                if (rowsByArmorCodeField[armorField]) {
+                    rowsByArmorCodeField[armorField].forEach(rowData => {
+                        tbody.appendChild(createRowElement(rowData));
+                    });
+                     processedMappedFields.add(armorField);
+                }
             });
         }
 
-
-        // Add Header for Unmapped JSON Keys
-        if (unmappedJsonRows.length > 0) {
+        // 2. Unmapped JSON Keys
+        if (unmappedJsonRowsData.length > 0) {
             const unmappedHeaderRow = document.createElement('tr');
             const unmappedHeaderCell = document.createElement('th');
             unmappedHeaderCell.colSpan = 3;
@@ -480,16 +471,45 @@ document.addEventListener('DOMContentLoaded', () => {
             unmappedHeaderCell.classList.add('category-header', 'unmapped-header');
             unmappedHeaderRow.appendChild(unmappedHeaderCell);
             tbody.appendChild(unmappedHeaderRow);
+
+            unmappedJsonRowsData.forEach(rowData => {
+                tbody.appendChild(createRowElement(rowData));
+            });
         }
 
-        // Add Unmapped JSON Key Rows
-        unmappedJsonRows.forEach(createRow);
+        // 3. Placeholder Rows for Unmapped ArmorCode Fields (Generate and Store)
+        const unmappedAcFields = [];
+        armorCodeFields.forEach(armorField => {
+             // Check if field was already added as a mapped field
+            if (!processedMappedFields.has(armorField)) {
+                 // Also check if it's currently mapped (even if rowsByArmorCodeField was empty, e.g. empty Tags array)
+                const isCurrentlyMapped = currentMappings[armorField] !== null && 
+                                          (!Array.isArray(currentMappings[armorField]) || currentMappings[armorField].length > 0);
+                if (!isCurrentlyMapped) {
+                    unmappedAcFields.push(armorField);
+                    placeholderAcRows.push(createPlaceholderRowElement(armorField));
+                }
+            }
+        });
 
+        // Add Header for Placeholder Rows if any exist
+        if (placeholderAcRows.length > 0) {
+            const placeholderHeaderRow = document.createElement('tr');
+            const placeholderHeaderCell = document.createElement('th');
+            placeholderHeaderCell.colSpan = 3;
+            placeholderHeaderCell.textContent = 'Unmapped ArmorCode Fields';
+            placeholderHeaderCell.classList.add('category-header', 'placeholder-header'); // Add specific class
+            placeholderHeaderRow.appendChild(placeholderHeaderCell);
+            tbody.appendChild(placeholderHeaderRow);
 
+            // Append stored placeholder rows
+            placeholderAcRows.forEach(row => tbody.appendChild(row));
+        }
+
+        // --- Finalize Table ---
         table.appendChild(tbody);
         outputTableContainer.appendChild(table);
         addDropdownListeners(); // Re-attach listeners after table generation
-        // clearSummaryDisplay(); // Clear summary when table regenerates
         displayMappingSummary(); // Update summary display
     }
 
@@ -583,120 +603,101 @@ document.addEventListener('DOMContentLoaded', () => {
         const originalJsonKey = tableRow.dataset.jsonKey; // Key associated with this row (might be placeholder)
         const isUnmappedAcRow = tableRow.classList.contains('unmapped-ac-row');
 
-
         console.log(`AC Change: Row JSON Key: ${originalJsonKey}, New AC Field: ${newArmorCodeField}, Is Placeholder Row: ${isUnmappedAcRow}`);
 
+        // Define which fields can have multiple mappings
+        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository'];
 
         if (isUnmappedAcRow) {
             // --- Handling change on a placeholder AC row ---
-            const originalArmorCodeField = selectElement.querySelector('option[selected]').textContent; // Get the AC field this row represents
+            const originalArmorCodeField = selectElement.querySelector('option[selected]').textContent;
 
-             console.log(` -> Placeholder Row Change. Original AC Field: ${originalArmorCodeField}`);
-
+            console.log(` -> Placeholder Row Change. Original AC Field: ${originalArmorCodeField}`);
 
             // 1. Remove potential previous mapping for the NEW AC field (if any)
-             if (newArmorCodeField && currentMappings[newArmorCodeField]) {
-                console.log(` -> New AC field '${newArmorCodeField}' was already mapped to JSON key '${currentMappings[newArmorCodeField]}'. Removing old mapping.`);
-                 // If the old mapping was for Tags, remove the specific original AC field if present
-                if (newArmorCodeField === 'Tags' && Array.isArray(currentMappings[newArmorCodeField])) {
-                     const index = currentMappings[newArmorCodeField].indexOf(currentMappings[newArmorCodeField]); // This seems wrong, should be JSON key?
-                     // TODO: This logic needs review. How do we know which JSON key to remove from Tags?
-                } else {
-                     currentMappings[newArmorCodeField] = null; // Clear single mapping
+            if (newArmorCodeField && currentMappings[newArmorCodeField]) {
+                console.log(` -> New AC field '${newArmorCodeField}' was already mapped.`);
+                // Only clear if it's not a multi-mapping field
+                if (!multiMappingFields.includes(newArmorCodeField)) {
+                    currentMappings[newArmorCodeField] = null;
                 }
             }
 
+            // 2. Clear the mapping for the ORIGINAL AC field represented by this row
+            if (originalArmorCodeField && currentMappings[originalArmorCodeField] !== null) {
+                console.log(` -> Clearing existing mapping for original AC field '${originalArmorCodeField}'`);
+                currentMappings[originalArmorCodeField] = null;
+            }
 
-             // 2. Clear the mapping for the ORIGINAL AC field represented by this row
-             if (originalArmorCodeField && currentMappings[originalArmorCodeField] !== null) {
-                 console.log(` -> Clearing existing mapping for original AC field '${originalArmorCodeField}'`);
-                 currentMappings[originalArmorCodeField] = null;
-             }
-
-
-             // 3. If a new AC field (not 'None') was selected, mark it as unmapped for now.
-             //    The user needs to select a JSON key using the *other* dropdown mechanism (e.g., for Tags or via JSON key rows).
-             //    For direct 1-to-1 mapping from placeholder, this isn't the primary flow.
-             if (newArmorCodeField) {
-                 console.warn(` -> Mapping AC field '${newArmorCodeField}' directly from a placeholder row is not fully supported yet. Regenerating table.`);
-                  // Mark the new field as unmapped so it appears correctly
-                 if(currentMappings[newArmorCodeField] === undefined){ // Should not happen, but safety check
-                      currentMappings[newArmorCodeField] = null;
-                 }
-             } else {
-                 console.log(" -> 'None' selected on placeholder row. Original AC field remains unmapped.");
-             }
+            // 3. If a new AC field (not 'None') was selected, mark it as unmapped for now.
+            if (newArmorCodeField) {
+                console.warn(` -> Mapping AC field '${newArmorCodeField}' directly from a placeholder row is not fully supported yet. Regenerating table.`);
+                if(currentMappings[newArmorCodeField] === undefined){
+                    currentMappings[newArmorCodeField] = null;
+                }
+            } else {
+                console.log(" -> 'None' selected on placeholder row. Original AC field remains unmapped.");
+            }
 
         } else {
-             // --- Handling change on a regular JSON key row ---
-             const jsonKeyForThisRow = originalJsonKey;
-             console.log(` -> Regular Row Change. JSON Key: ${jsonKeyForThisRow}`);
-
+            // --- Handling change on a regular JSON key row ---
+            const jsonKeyForThisRow = originalJsonKey;
+            console.log(` -> Regular Row Change. JSON Key: ${jsonKeyForThisRow}`);
 
             // Find which AC field (if any) *was* previously mapped to this JSON key
-             let previousArmorCodeField = null;
-             for (const acField in currentMappings) {
-                 if (currentMappings[acField] === jsonKeyForThisRow) {
-                     previousArmorCodeField = acField;
-                     break;
-                 } else if (acField === 'Tags' && Array.isArray(currentMappings[acField]) && currentMappings[acField].includes(jsonKeyForThisRow)) {
-                     previousArmorCodeField = 'Tags'; // Special handling for tags
-                     break;
-                 }
-             }
-              console.log(` -> Previous AC mapping for this JSON key: ${previousArmorCodeField}`);
-
+            let previousArmorCodeField = null;
+            for (const acField in currentMappings) {
+                if (currentMappings[acField] === jsonKeyForThisRow) {
+                    previousArmorCodeField = acField;
+                    break;
+                } else if (Array.isArray(currentMappings[acField]) && currentMappings[acField].includes(jsonKeyForThisRow)) {
+                    previousArmorCodeField = acField;
+                    break;
+                }
+            }
+            console.log(` -> Previous AC mapping for this JSON key: ${previousArmorCodeField}`);
 
             // 1. Clear the previous mapping for this JSON key
-             if (previousArmorCodeField) {
-                 if (previousArmorCodeField === 'Tags') {
-                     const index = currentMappings['Tags'].indexOf(jsonKeyForThisRow);
-                     if (index > -1) {
-                         currentMappings['Tags'].splice(index, 1);
-                         console.log(` -> Removed '${jsonKeyForThisRow}' from Tags array.`);
-                     }
-                 } else {
-                     currentMappings[previousArmorCodeField] = null;
-                      console.log(` -> Cleared single mapping for '${previousArmorCodeField}'.`);
-                 }
-             }
-
-
-            // 2. Handle potential conflict with the NEW AC field selection
-            if (newArmorCodeField) { // If a specific field (not 'None') was selected
-                const existingJsonKeyForNewField = currentMappings[newArmorCodeField];
-                 console.log(` -> Checking for conflicts with new AC field '${newArmorCodeField}'. Currently mapped to: ${existingJsonKeyForNewField}`);
-
-
-                if (existingJsonKeyForNewField) {
-                    // Conflict: The chosen AC field is already mapped to a DIFFERENT JSON key.
-                    // We need to clear that old mapping.
-                     console.warn(` -> Conflict detected! '${newArmorCodeField}' was mapped to '${existingJsonKeyForNewField}'. Clearing old mapping.`);
-                    currentMappings[newArmorCodeField] = null;
-                     // We also need to find the row for that other JSON key and update its dropdown to 'None' in the UI (handled by regenerateTable)
+            if (previousArmorCodeField) {
+                if (Array.isArray(currentMappings[previousArmorCodeField])) {
+                    const index = currentMappings[previousArmorCodeField].indexOf(jsonKeyForThisRow);
+                    if (index > -1) {
+                        currentMappings[previousArmorCodeField].splice(index, 1);
+                        console.log(` -> Removed '${jsonKeyForThisRow}' from ${previousArmorCodeField} array.`);
+                    }
+                } else {
+                    currentMappings[previousArmorCodeField] = null;
+                    console.log(` -> Cleared single mapping for '${previousArmorCodeField}'.`);
                 }
+            }
 
-
-                 // 3. Apply the new mapping
-                 if (newArmorCodeField === 'Tags') {
-                     if (!Array.isArray(currentMappings['Tags'])) {
-                         currentMappings['Tags'] = []; // Initialize if needed
-                     }
-                     if (!currentMappings['Tags'].includes(jsonKeyForThisRow)) {
-                         currentMappings['Tags'].push(jsonKeyForThisRow);
-                         console.log(` -> Added '${jsonKeyForThisRow}' to Tags array.`);
-                     }
-                 } else {
-                     currentMappings[newArmorCodeField] = jsonKeyForThisRow;
-                     console.log(` -> Mapped '${newArmorCodeField}' to '${jsonKeyForThisRow}'.`);
-                 }
+            // 2. Handle the NEW AC field selection
+            if (newArmorCodeField) {
+                // Initialize array for multi-mapping fields if needed
+                if (multiMappingFields.includes(newArmorCodeField)) {
+                    if (!Array.isArray(currentMappings[newArmorCodeField])) {
+                        currentMappings[newArmorCodeField] = [];
+                    }
+                    if (!currentMappings[newArmorCodeField].includes(jsonKeyForThisRow)) {
+                        currentMappings[newArmorCodeField].push(jsonKeyForThisRow);
+                        console.log(` -> Added '${jsonKeyForThisRow}' to ${newArmorCodeField} array.`);
+                    }
+                } else {
+                    // For single-mapping fields, check for conflicts
+                    const existingJsonKeyForNewField = currentMappings[newArmorCodeField];
+                    if (existingJsonKeyForNewField) {
+                        console.warn(` -> Conflict detected! '${newArmorCodeField}' was mapped to '${existingJsonKeyForNewField}'. Clearing old mapping.`);
+                        currentMappings[newArmorCodeField] = null;
+                    }
+                    currentMappings[newArmorCodeField] = jsonKeyForThisRow;
+                    console.log(` -> Mapped '${newArmorCodeField}' to '${jsonKeyForThisRow}'.`);
+                }
             } else {
-                 console.log(` -> 'None' selected. JSON Key '${jsonKeyForThisRow}' is now unmapped.`);
+                console.log(` -> 'None' selected. JSON Key '${jsonKeyForThisRow}' is now unmapped.`);
             }
         }
 
-
-        regenerateTableWithState(); // Regenerate table to reflect all changes and ensure consistency
+        regenerateTableWithState();
     }
 
     function handleJsonKeyChange(event) {
@@ -706,27 +707,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log(`JSON Key Change: Target AC Field '${targetArmorCodeField}', Selected JSON Key: '${selectedJsonKey}'`);
 
-        // --- Logic for Updating Mappings ---
+        // Define which fields can have multiple mappings
+        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository'];
 
         // 1. Clear any previous mapping *for this specific ArmorCode field*
-        // This handles cases where the user changes the JSON key selection for an AC field.
         if (currentMappings[targetArmorCodeField]) {
             console.log(` -> Clearing previous mapping for '${targetArmorCodeField}' (was: ${currentMappings[targetArmorCodeField]})`);
-            currentMappings[targetArmorCodeField] = null;
+            // Only clear if it's not a multi-mapping field
+            if (!multiMappingFields.includes(targetArmorCodeField)) {
+                currentMappings[targetArmorCodeField] = null;
+            }
         }
-         // Special handling for Tags: If the previous mapping was the *only* key in the Tags array, clear Tags.
-         // If other keys remain, we don't clear the whole Tags mapping here. The removal logic for Tags is complex
-         // and primarily handled when the *ArmorCode* field dropdown changes. This prevents accidental full clears.
-         // NOTE: This function primarily handles mapping *to* an AC field.
 
-        // 2. Check if the *selected JSON key* is already mapped to a *different* ArmorCode field.
+        // 2. Check if the *selected JSON key* is already mapped to a *different* ArmorCode field
         let conflictingAcField = null;
         for (const acField in currentMappings) {
-            if (acField === 'Tags' && Array.isArray(currentMappings[acField]) && currentMappings[acField].includes(selectedJsonKey)) {
-                // Check if the selected key is in the Tags array
-                if (acField !== targetArmorCodeField) { // Don't conflict with itself if target is Tags
-                   conflictingAcField = acField; // It's used in Tags
-                   break;
+            if (Array.isArray(currentMappings[acField]) && currentMappings[acField].includes(selectedJsonKey)) {
+                // Check if the selected key is in any multi-mapping field array
+                if (acField !== targetArmorCodeField) {
+                    conflictingAcField = acField;
+                    break;
                 }
             } else if (currentMappings[acField] === selectedJsonKey && acField !== targetArmorCodeField) {
                 // Check if the selected key is mapped to a different single AC field
@@ -735,14 +735,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        // 3. Handle conflict: If the selected JSON key is already used elsewhere, clear that old mapping.
+        // 3. Handle conflict: If the selected JSON key is already used elsewhere, clear that old mapping
         if (conflictingAcField) {
-             console.warn(` -> Conflict: Selected JSON key '${selectedJsonKey}' is already mapped to '${conflictingAcField}'. Clearing old mapping for '${conflictingAcField}'.`);
-            if (conflictingAcField === 'Tags' && Array.isArray(currentMappings['Tags'])) {
-                // Remove the specific key from the Tags array
-                currentMappings['Tags'] = currentMappings['Tags'].filter(key => key !== selectedJsonKey);
-                if (currentMappings['Tags'].length === 0) {
-                    currentMappings['Tags'] = null; // Clear Tags if empty
+            console.warn(` -> Conflict: Selected JSON key '${selectedJsonKey}' is already mapped to '${conflictingAcField}'. Clearing old mapping for '${conflictingAcField}'.`);
+            if (Array.isArray(currentMappings[conflictingAcField])) {
+                // Remove the specific key from the array
+                currentMappings[conflictingAcField] = currentMappings[conflictingAcField].filter(key => key !== selectedJsonKey);
+                if (currentMappings[conflictingAcField].length === 0) {
+                    currentMappings[conflictingAcField] = null; // Clear if empty
                 }
             } else {
                 // Clear the single mapping
@@ -750,22 +750,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-
         // 4. Apply the new mapping if a valid JSON key was selected
         if (selectedJsonKey) {
-            // Map the selected JSON key to the target AC field
-            console.log(` -> Mapping '${targetArmorCodeField}' to '${selectedJsonKey}'`);
-            currentMappings[targetArmorCodeField] = selectedJsonKey;
-
-             // If the placeholder row's AC dropdown still shows the AC field name (meaning it wasn't changed),
-             // ensure the AC dropdown in the corresponding JSON key row (if it exists) is updated to 'None'.
-             // This is handled implicitly by regenerateTableWithState, as the conflictingAcField logic above clears the old mapping.
-
+            if (multiMappingFields.includes(targetArmorCodeField)) {
+                // Initialize array if needed
+                if (!Array.isArray(currentMappings[targetArmorCodeField])) {
+                    currentMappings[targetArmorCodeField] = [];
+                }
+                // Add the key if not already present
+                if (!currentMappings[targetArmorCodeField].includes(selectedJsonKey)) {
+                    currentMappings[targetArmorCodeField].push(selectedJsonKey);
+                    console.log(` -> Added '${selectedJsonKey}' to ${targetArmorCodeField} array.`);
+                }
+            } else {
+                // For single-mapping fields
+                currentMappings[targetArmorCodeField] = selectedJsonKey;
+                console.log(` -> Mapped '${targetArmorCodeField}' to '${selectedJsonKey}'.`);
+            }
         } else {
-            // If '-- Select JSON Key --' was chosen, the target AC field remains unmapped (already cleared in step 1).
             console.log(` -> '-- Select JSON Key --' chosen. '${targetArmorCodeField}' remains unmapped.`);
         }
-
 
         // Regenerate the table to reflect the state change and update all dropdowns
         regenerateTableWithState();
@@ -774,14 +778,20 @@ document.addEventListener('DOMContentLoaded', () => {
     function handleTagsAddChange(event) {
         const select = event.target;
         const selectedJsonKey = select.value;
+        const targetArmorCodeField = select.dataset.targetArmorcode;
 
-        console.log(`Tags Add Change: Selected JSON Key: '${selectedJsonKey}'`);
+        console.log(`Tags Add Change: Selected JSON Key: '${selectedJsonKey}' for field '${targetArmorCodeField}'`);
 
         if (selectedJsonKey) {
-            // Add the selected key to the 'Tags' array (ensure it exists and is an array)
-            if (!currentMappings['Tags']) currentMappings['Tags'] = [];
-            if (Array.isArray(currentMappings['Tags']) && !currentMappings['Tags'].includes(selectedJsonKey)) {
-                currentMappings['Tags'].push(selectedJsonKey);
+            // Initialize array if needed
+            if (!currentMappings[targetArmorCodeField]) {
+                currentMappings[targetArmorCodeField] = [];
+            }
+
+            // Add the selected key if not already present
+            if (Array.isArray(currentMappings[targetArmorCodeField]) && !currentMappings[targetArmorCodeField].includes(selectedJsonKey)) {
+                currentMappings[targetArmorCodeField].push(selectedJsonKey);
+                console.log(` -> Added '${selectedJsonKey}' to ${targetArmorCodeField} array.`);
             }
             // Reset the dropdown after adding
             select.value = "";
@@ -834,7 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function copyTableToClipboard(table) {
         let plainText = '';
         const rows = table.querySelectorAll('tbody > tr'); // Get all body rows
-        const headers = ["JSON Key", "JSON Value", "Mapped Armor Code Field"]; // Match visible headers
+        const headers = ["JSON Key", "JSON Value", "ArmorCode Field"]; // Match visible headers
         plainText += headers.join('\t') + '\n';
         let rowCount = 0;
 
