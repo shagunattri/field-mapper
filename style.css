@@ -62,20 +62,59 @@ textarea {
     flex-grow: 1; /* Allow textarea to grow */
 }
 
-button {
-    padding: 10px 15px;
-    background-color: #007bff;
+/* Combine button styles for consistency and apply Material look */
+#processBtn,
+#copyBtn {
+    padding: 10px 24px; /* Adjusted padding */
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 16px;
-    margin-top: 10px; /* Add some space above buttons */
-    align-self: flex-start; /* Align button to the start */
+    font-size: 0.875em; /* 14px */
+    font-weight: 500; /* Medium weight */
+    text-transform: uppercase; /* Uppercase text */
+    transition: background-color 0.3s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.2); /* Material shadow */
+    margin-top: 15px; /* Consistent margin */
+    align-self: flex-start; /* Align buttons */
 }
 
-button:hover {
-    background-color: #0056b3;
+#processBtn:hover,
+#copyBtn:hover {
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.2); /* Increased shadow on hover */
+}
+
+/* Specific background colors */
+#processBtn {
+    background-color: #1976D2; /* Material Blue 700 */
+}
+
+#processBtn:hover {
+    background-color: #1565C0; /* Material Blue 800 */
+}
+
+/* Style for the attribute type selection */
+.attribute-type-selection {
+    margin-top: 15px;
+    margin-bottom: 15px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+}
+
+.attribute-type-selection label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.attribute-type-selection div {
+    margin-bottom: 5px;
+}
+
+.attribute-type-selection input[type="radio"] {
+    margin-right: 5px;
 }
 
 .output-section h2 {
@@ -140,12 +179,41 @@ td[contenteditable="true"]:focus {
 }
 
 #copyBtn {
-    background-color: #28a745;
-    align-self: flex-start; /* Align to start */
-    margin-top: 15px; /* Space above copy button */
+    /* background-color: #28a745; */ /* Old color - now handled above */
+    background-color: #388E3C; /* Material Green 700 */
+    /* align-self: flex-start; */ /* Handled above */
+    /* margin-top: 15px; */ /* Handled above */
     display: none; /* Initially hidden */
 }
 
 #copyBtn:hover {
-    background-color: #218838;
+    /* background-color: #218838; */ /* Old color - now handled above */
+     background-color: #2E7D32; /* Material Green 800 */
+}
+
+/* Styles for JSON Key dropdown in placeholder rows */
+.json-key-select-placeholder {
+    width: 100%; /* Make dropdown fill cell */
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+/* Add styles for the new dropdown */
+#attributeTypeSelect {
+    width: 100%; /* Make dropdown full width */
+    padding: 8px 10px;
+    margin-bottom: 15px; /* Space below dropdown */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    font-size: 14px;
+    box-sizing: border-box; /* Include padding and border in width */
+}
+
+/* Remove the old hover rule specific to .input-section button */
+/* .input-section button:hover {
+// ... existing code ...
+
 } 

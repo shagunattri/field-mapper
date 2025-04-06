@@ -3,16 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON to Armor Code Field Mapper</title>
+    <title>JSON to ArmorCode Field Mapper</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>JSON to Armor Code Field Mapper</h1>
+    <h1>JSON to ArmorCode Field Mapper</h1>
 
     <div class="container">
         <div class="input-section">
             <label for="jsonInput">Paste JSON Response:</label>
             <textarea id="jsonInput" rows="15" placeholder="Paste your JSON data here..."></textarea>
+
+            <label for="attributeTypeSelect">Select Attribute Type:</label>
+            <select id="attributeTypeSelect" name="attributeType">
+                <option value="finding" selected>Finding Attributes</option>
+                <option value="asset">Asset Attributes</option>
+            </select>
+
             <button id="processBtn">Process JSON</button>
         </div>
 
