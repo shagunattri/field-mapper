@@ -16,12 +16,3 @@ To run locally:
 1. Clone the repository
 2. Open `index.html` in a web browser
    - Or use a local server: `python -m http.server 8000`
-
-### Deploy Your Own Instance
-
-1. Fork this repository
-2. Enable GitHub Pages in your repository settings:
-   - Go to Settings > Pages
-   - Set source to "main" branch
-   - Save changes
-3. Your site will be available at https://[your-username].github.io/field-mapper/
