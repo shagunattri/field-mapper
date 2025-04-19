@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`AC Change: Row JSON Key: ${originalJsonKey}, New AC Field: ${newArmorCodeField}, Is Placeholder Row: ${isUnmappedAcRow}`);
 
         // Define which fields can have multiple mappings
-        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository'];
+        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description'];
 
         if (isUnmappedAcRow) {
             // --- Handling change on a placeholder AC row ---
@@ -708,7 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`JSON Key Change: Target AC Field '${targetArmorCodeField}', Selected JSON Key: '${selectedJsonKey}'`);
 
         // Define which fields can have multiple mappings
-        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository'];
+        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description'];
 
         // 1. Clear any previous mapping *for this specific ArmorCode field*
         if (currentMappings[targetArmorCodeField]) {
