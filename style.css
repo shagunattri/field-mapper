@@ -191,9 +191,218 @@ td[contenteditable="true"]:focus {
      background-color: #2E7D32; /* Material Green 800 */
 }
 
+/* Style for the new Render Description Button */
+#renderDescriptionLayoutBtn {
+    background-color: #FF9800; /* Material Orange 500 */
+    color: white;
+    /* Match styles with #copyBtn */
+    margin-left: 10px; /* Space it from the copy button */
+    padding: 10px 24px; /* Same padding */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.875em; /* Same font size */
+    font-weight: 500; /* Same font weight */
+    text-transform: uppercase; /* Same text transform */
+    transition: background-color 0.3s ease, box-shadow 0.2s ease;
+    box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.2); /* Same shadow */
+    margin-top: 15px; /* Same margin-top */
+    align-self: flex-start; /* Same alignment */
+    vertical-align: top; /* Align with the top of the copy button if needed */
+    line-height: normal; /* Ensure consistent line height */
+}
+
+#renderDescriptionLayoutBtn:hover {
+    background-color: #F57C00; /* Material Orange 700 */
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.2); /* Increased shadow on hover */
+}
+
+/* Modal Styles */
+.modal {
+  position: fixed; /* Stay in place */
+  z-index: 1000; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgba(0,0,0,0.5); /* Black w/ opacity */
+  display: flex; /* Use flexbox for centering */
+  align-items: center; /* Vertical center */
+  justify-content: center; /* Horizontal center */
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: auto; /* Centered */
+  padding: 25px;
+  border: 1px solid #888;
+  width: 80%; /* Adjust as needed */
+  max-width: 900px; /* Max width */
+  border-radius: 8px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  position: relative;
+  max-height: 85vh; /* Limit height */
+  display: flex;
+  flex-direction: column;
+}
+
+.close-button {
+  color: #aaa;
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.modal h2 {
+    margin-top: 0;
+    color: #333;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.modal p {
+    font-size: 0.95em;
+    color: #555;
+    margin-bottom: 20px;
+}
+
+.modal-columns {
+    display: flex;
+    gap: 20px;
+    flex-grow: 1; /* Allow columns to take available space */
+    overflow-y: hidden; /* Prevent outer scroll, handle inner */
+    margin-bottom: 20px;
+}
+
+.modal-column {
+    flex: 1; /* Equal width */
+    display: flex;
+    flex-direction: column;
+    overflow-y: hidden; /* Hide scroll on column itself */
+}
+
+.modal-column h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    color: #0056b3;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+#descriptionSortableItems {
+    border: 1px dashed #ccc;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 4px;
+    min-height: 200px;
+    flex-grow: 1;
+    overflow-y: auto; /* Allow scrolling for many items */
+}
+
+#descriptionRenderedPreview {
+    border: 1px solid #ddd;
+    padding: 10px;
+    background-color: #fff;
+    border-radius: 4px;
+    word-wrap: break-word;
+    font-family: sans-serif;
+    font-size: 1em;
+    min-height: 200px;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+/* Styles for items within the rendered preview */
+#descriptionRenderedPreview .rendered-item {
+    margin-bottom: 15px;
+}
+
+#descriptionRenderedPreview .rendered-item strong {
+    display: block;
+    margin-bottom: 3px;
+    color: #333;
+}
+
+#descriptionRenderedPreview .rendered-item .rendered-value {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.95em;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background-color: #f8f9fa;
+    padding: 5px 8px;
+    border-radius: 3px;
+    display: block;
+}
+
+/* Styles for draggable items *within the modal* */
+.description-item-modal {
+    background-color: #e9ecef;
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+    cursor: grab;
+    transition: background-color 0.2s ease;
+    font-size: 0.9em;
+}
+
+.description-item-modal:last-child {
+    margin-bottom: 0;
+}
+
+.description-item-modal .item-key {
+    font-weight: bold;
+    color: #0056b3;
+    display: block;
+    margin-bottom: 3px;
+}
+
+.description-item-modal .item-value-preview {
+    font-style: italic;
+    color: #555;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 95%;
+}
+
+.description-item-modal.dragging {
+    opacity: 0.5;
+    background-color: #d1ecf1;
+}
+
+#copyRenderedDescriptionBtn {
+    background-color: #28a745;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+    align-self: center;
+    margin-top: 10px;
+}
+
+#copyRenderedDescriptionBtn:hover {
+    background-color: #218838;
+}
+
 /* Styles for JSON Key dropdown in placeholder rows */
 .json-key-select-placeholder {
-    width: 100%; /* Make dropdown fill cell */
+    width: 100%;
     padding: 6px;
     border: 1px solid #ccc;
     border-radius: 4px;
@@ -202,18 +411,26 @@ td[contenteditable="true"]:focus {
 
 /* Add styles for the new dropdown */
 #attributeTypeSelect {
-    width: 100%; /* Make dropdown full width */
+    width: 100%;
     padding: 8px 10px;
-    margin-bottom: 15px; /* Space below dropdown */
+    margin-bottom: 15px;
     border: 1px solid #ccc;
     border-radius: 4px;
     background-color: white;
     font-size: 14px;
-    box-sizing: border-box; /* Include padding and border in width */
+    box-sizing: border-box;
 }
 
-/* Remove the old hover rule specific to .input-section button */
-/* .input-section button:hover {
-// ... existing code ...
+/* Button Group Container */
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    align-items: flex-start;
+}
 
+/* Adjust individual button styles */
+#copyBtn, #renderDescriptionLayoutBtn {
+    margin-top: 0;
+    align-self: auto;
 } 

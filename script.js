@@ -4,8 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const outputTableContainer = document.getElementById('outputTableContainer');
     const errorMessages = document.getElementById('errorMessages');
     const copyBtn = document.getElementById('copyBtn');
+    const renderDescriptionLayoutBtn = document.getElementById('renderDescriptionLayoutBtn'); // New button
     const container = document.querySelector('.container'); // Get the main container
     const outputSection = document.querySelector('.output-section'); // Get output section
+    const attributeSelect = document.getElementById('attributeTypeSelect');
+
+    // Description Modal Elements
+    const descriptionModal = document.getElementById('descriptionModal');
+    const closeDescriptionModalBtn = document.getElementById('closeDescriptionModalBtn');
+    const descriptionSortableItems = document.getElementById('descriptionSortableItems');
+    const descriptionRenderedPreview = document.getElementById('descriptionRenderedPreview');
+    const copyRenderedDescriptionBtn = document.getElementById('copyRenderedDescriptionBtn');
+    let draggedItemModal = null; // For drag/drop within modal
 
     // Store discovered JSON keys for dropdown
     let discoveredJsonKeys = [];
@@ -55,10 +65,16 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
 
     processBtn.addEventListener('click', () => {
-        // --- Get Selected Attribute Type from Dropdown ---
-        const attributeSelect = document.getElementById('attributeTypeSelect');
         const selectedAttributeType = attributeSelect.value;
-        currentAttributeType = selectedAttributeType; // Store for use in other functions
+        currentAttributeType = selectedAttributeType;
+
+        // Show/Hide Render Description Button
+        if (currentAttributeType === 'finding') {
+            renderDescriptionLayoutBtn.style.display = 'inline-block'; // Or 'block' if preferred
+        } else {
+            renderDescriptionLayoutBtn.style.display = 'none';
+            closeModal(descriptionModal); // Close modal if switching away from findings
+        }
 
         // --- Set Field Lists Based on Selection ---
         if (currentAttributeType === 'asset') {
@@ -77,6 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
         errorMessages.textContent = '';
         outputTableContainer.innerHTML = '<p>Processing...</p>';
         copyBtn.style.display = 'none';
+        renderDescriptionLayoutBtn.style.display = 'none'; // Hide initially on process
         container.classList.remove('results-active');
         discoveredJsonKeys = []; // Reset discovered keys
         flattenedJsonData = {}; // Reset flattened data
@@ -139,40 +156,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- Initialize currentMappings ---
             // Start with all ArmorCode fields unmapped
             armorCodeFields.forEach(field => currentMappings[field] = null);
+
+            // Define which fields can have multiple mappings (must match handlers)
+            const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description'];
+
             // Apply initial mappings found above
             for (const [jsonKey, armorField] of Object.entries(initialMappingResults)) {
-                if (armorField !== 'Tags') { // Don't pre-fill 'Tags' as a primary mapping
-                     // Check if this armor field was already assigned (shouldn't happen with current logic, but safe check)
+                if (multiMappingFields.includes(armorField)) {
+                    // Handle multi-mapping fields
+                    if (!Array.isArray(currentMappings[armorField])) {
+                        currentMappings[armorField] = []; // Initialize as array if needed
+                    }
+                    if (!currentMappings[armorField].includes(jsonKey)) {
+                        currentMappings[armorField].push(jsonKey);
+                        console.log(`Initial map (multi): Added '${jsonKey}' to ${armorField} array.`);
+                    }
+                } else {
+                    // Handle single-mapping fields (only if not already mapped)
                     if (currentMappings[armorField] === null) {
                         currentMappings[armorField] = jsonKey;
+                        console.log(`Initial map (single): Mapped '${armorField}' to '${jsonKey}'.`);
                     } else {
-                        console.warn(`ArmorCode field '${armorField}' potentially mapped by multiple keys. Using first found: '${currentMappings[armorField]}'. Key '${jsonKey}' ignored for initial mapping.`);
-                    }
-                }
-            }
-             // Add explicit 'Tags' mapping for keys that weren't mapped to anything else
-            for (const [jsonKey, armorField] of Object.entries(initialMappingResults)) {
-                if (armorField === 'Tags') {
-                    // Check if this jsonKey ended up being mapped to a *specific* AC field
-                    let isJsonKeyMappedSpecifically = false;
-                    for(const acField in currentMappings){
-                        if(currentMappings[acField] === jsonKey){
-                            isJsonKeyMappedSpecifically = true;
-                            break;
-                        }
-                    }
-                    if (!isJsonKeyMappedSpecifically) {
-                         // Ensure 'Tags' entry exists if not already explicitly mapped
-                        if (!currentMappings['Tags']) {
-                            currentMappings['Tags'] = []; // Initialize Tags as an array if needed
-                        }
-                        // Add the jsonKey to the Tags mapping if not already there
-                        if (Array.isArray(currentMappings['Tags']) && !currentMappings['Tags'].includes(jsonKey)) {
-                           currentMappings['Tags'].push(jsonKey);
-                        } else if (!Array.isArray(currentMappings['Tags'])) {
-                            // Handle potential override if 'Tags' was mistakenly set to a single key earlier
-                            currentMappings['Tags'] = [jsonKey];
-                        }
+                        console.warn(`Initial map conflict: ArmorCode field '${armorField}' already mapped to '${currentMappings[armorField]}'. Key '${jsonKey}' ignored for initial single mapping.`);
                     }
                 }
             }
@@ -180,6 +185,10 @@ document.addEventListener('DOMContentLoaded', () => {
             generateTable(); // Generate the unified table
 
             copyBtn.style.display = 'block';
+            // Show render button only if findings were processed successfully
+            if (currentAttributeType === 'finding') {
+                renderDescriptionLayoutBtn.style.display = 'inline-block';
+            }
             container.classList.add('results-active');
 
         } catch (error) {
@@ -187,6 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
             errorMessages.textContent = `Error processing JSON: ${error.message}`;
             outputTableContainer.innerHTML = '<p>Processed results will appear here.</p>';
             container.classList.remove('results-active');
+            copyBtn.style.display = 'none';
+            renderDescriptionLayoutBtn.style.display = 'none'; // Hide on error
             clearSummaryDisplay();
         }
     });
@@ -219,6 +230,264 @@ document.addEventListener('DOMContentLoaded', () => {
              // Note: Button remains disabled until timeout completes on success
         }
     });
+
+    // --- Description Layout Modal Logic ---
+
+    // Open Modal
+    renderDescriptionLayoutBtn.addEventListener('click', () => {
+        const descriptionKeys = currentMappings['Description'];
+
+        if (Array.isArray(descriptionKeys) && descriptionKeys.length > 0) {
+            populateSortableItems(descriptionKeys);
+            updateDescriptionPreview(); // Initial preview
+            openModal(descriptionModal);
+        } else {
+            alert('No JSON fields are currently mapped to the Description field.');
+        }
+    });
+
+    // Close Modal
+    closeDescriptionModalBtn.addEventListener('click', () => closeModal(descriptionModal));
+    // Optional: Close modal if clicking outside the content
+    window.addEventListener('click', (event) => {
+        if (event.target == descriptionModal) {
+            closeModal(descriptionModal);
+        }
+    });
+
+    function openModal(modalElement) {
+        if (modalElement) modalElement.style.display = 'flex'; // Use flex to enable centering
+    }
+
+    function closeModal(modalElement) {
+         if (modalElement) modalElement.style.display = 'none';
+    }
+
+    // Populate Draggable Items
+    function populateSortableItems(keys) {
+        descriptionSortableItems.innerHTML = ''; // Clear previous items
+        keys.forEach(jsonKey => {
+            const value = flattenedJsonData[jsonKey];
+            const item = document.createElement('div');
+            item.classList.add('description-item-modal'); // Use modal-specific class
+            item.draggable = true;
+            item.dataset.jsonKey = jsonKey;
+
+            const keySpan = document.createElement('span');
+            keySpan.classList.add('item-key');
+            keySpan.textContent = jsonKey;
+
+            const valuePreviewSpan = document.createElement('span');
+            valuePreviewSpan.classList.add('item-value-preview');
+            valuePreviewSpan.textContent = formatValue(value); // Show formatted value preview
+
+            item.appendChild(keySpan);
+            item.appendChild(valuePreviewSpan);
+
+            // Add Drag Listeners
+            item.addEventListener('dragstart', handleDragStartModal);
+            item.addEventListener('dragend', handleDragEndModal);
+
+            descriptionSortableItems.appendChild(item);
+        });
+
+        // Add common listeners to the container *once*
+        descriptionSortableItems.removeEventListener('dragover', handleDragOverModal);
+        descriptionSortableItems.removeEventListener('drop', handleDropModal);
+        descriptionSortableItems.addEventListener('dragover', handleDragOverModal);
+        descriptionSortableItems.addEventListener('drop', handleDropModal);
+    }
+
+    // Update Rendered Preview - Generates HTML for a single block appearance
+    function updateDescriptionPreview() {
+        let previewHTML = ''; // Build HTML string for innerHTML
+        const items = descriptionSortableItems.querySelectorAll('.description-item-modal');
+        items.forEach((item, index) => {
+            const key = item.dataset.jsonKey; // Get key from data attribute
+            const value = flattenedJsonData[key] || ''; // Get full value from data store
+            const formattedValue = formatValue(value);
+            const formattedTitle = formatJsonKeyForTitle(key); // <<< USE THE FORMATTED TITLE
+
+            // Build HTML content: Use <strong> for formatted title, escape value, use newlines
+            previewHTML += `<strong>${escapeHtml(formattedTitle)}</strong>\n`;
+            previewHTML += `${escapeHtml(formattedValue)}`; // Add the escaped value
+
+            // Add double newline for spacing between items, but not after the last one
+            if (index < items.length - 1) {
+                 previewHTML += '\n\n'; 
+            }
+        });
+
+        // Set innerHTML of the <pre> tag to render the HTML tags
+        if (previewHTML) {
+            descriptionRenderedPreview.innerHTML = previewHTML;
+        } else {
+            descriptionRenderedPreview.innerHTML = '<p style="color: #888; font-style: italic;">No items to preview.</p>';
+        }
+        // Note: The <pre> tag preserves the newline characters in the HTML string.
+        // The browser renders the <strong> tag.
+    }
+
+    // Copy Rendered Description - Copies HTML (single pre) and Plain Text (no code fences)
+    copyRenderedDescriptionBtn.addEventListener('click', async () => {
+        let markdownText = '';
+        let htmlContentForPre = ''; // Content to go inside the single <pre>
+        const items = descriptionSortableItems.querySelectorAll('.description-item-modal');
+
+        // Regenerate both Markdown (no fences) and HTML (single pre) strings
+        items.forEach((item, index) => {
+             const key = item.dataset.jsonKey;
+             const value = flattenedJsonData[key] || '';
+             const formattedValue = formatValue(value);
+             const formattedTitle = formatJsonKeyForTitle(key); // <<< USE THE FORMATTED TITLE
+             const escapedValue = escapeHtml(formattedValue);
+             const escapedFormattedTitle = escapeHtml(formattedTitle);
+
+             // --- Build Markdown (No Code Fences) --- 
+             markdownText += `**${formattedTitle}**\n`; // Use formatted title (includes colon), make bold
+             markdownText += `${formattedValue}`; // Just the value
+
+             // --- Build HTML content for the single <pre> block --- 
+             htmlContentForPre += `<strong>${escapedFormattedTitle}</strong>\n`; // Use formatted title
+             htmlContentForPre += `${escapedValue}`;
+
+             if (index < items.length - 1) {
+                  markdownText += '\n\n';
+                  htmlContentForPre += '\n\n'; 
+             }
+        });
+
+        // Final HTML wraps the content in one <pre>
+        const finalHtmlText = `<pre style="white-space: pre-wrap; word-wrap: break-word; font-family: sans-serif; font-size: 1em;">${htmlContentForPre}</pre>`;
+
+        if (markdownText) { // Check if there is text to copy
+             try {
+                // Create blobs for different formats
+                const blobHtml = new Blob([finalHtmlText], { type: 'text/html' });
+                const blobText = new Blob([markdownText], { type: 'text/plain' });
+                
+                // Create a ClipboardItem
+                const clipboardItem = new ClipboardItem({
+                    'text/html': blobHtml,
+                    'text/plain': blobText
+                });
+
+                // Write the item to the clipboard
+                await navigator.clipboard.write([clipboardItem]);
+
+                // --- Feedback --- 
+                copyRenderedDescriptionBtn.textContent = 'Copied!';
+                copyRenderedDescriptionBtn.disabled = true;
+                setTimeout(() => {
+                    copyRenderedDescriptionBtn.textContent = 'Copy Rendered Description';
+                    copyRenderedDescriptionBtn.disabled = false;
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy rendered description using ClipboardItem: ', err);
+                // Fallback attempt: Try copying only plain text (Markdown)
+                try {
+                    await navigator.clipboard.writeText(markdownText);
+                     copyRenderedDescriptionBtn.textContent = 'Copied as Markdown!'; // Indicate fallback
+                     copyRenderedDescriptionBtn.disabled = true;
+                     setTimeout(() => {
+                        copyRenderedDescriptionBtn.textContent = 'Copy Rendered Description';
+                        copyRenderedDescriptionBtn.disabled = false;
+                     }, 2500); // Slightly longer timeout for fallback message
+                     console.warn('ClipboardItem failed, copied as plain text (Markdown) instead.')
+                } catch (textErr) {
+                     console.error('Failed to copy plain text fallback: ', textErr);
+                     alert('Failed to copy description. Clipboard API error.');
+                }
+            }
+        } else {
+            alert('Nothing to copy.');
+        }
+    });
+
+    // --- Drag and Drop Handlers for Modal ---
+    function handleDragStartModal(e) {
+        draggedItemModal = this;
+        setTimeout(() => this.classList.add('dragging'), 0);
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', this.dataset.jsonKey);
+    }
+
+    function handleDragEndModal() {
+        this.classList.remove('dragging');
+        // Update preview *after* drop is visually complete
+        if (draggedItemModal) { // Check if drop was successful (draggedItemModal not cleared)
+           updateDescriptionPreview();
+        }
+        draggedItemModal = null;
+    }
+
+    function handleDragOverModal(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const afterElement = getDragAfterElementModal(descriptionSortableItems, e.clientY);
+        const currentDragging = descriptionSortableItems.querySelector('.dragging');
+
+        if (currentDragging) {
+            if (afterElement == null) {
+                 descriptionSortableItems.appendChild(currentDragging);
+            } else {
+                 descriptionSortableItems.insertBefore(currentDragging, afterElement);
+            }
+        }
+    }
+
+    function handleDropModal(e) {
+        e.preventDefault();
+        // Insertion happens in dragover
+        // We might need to call updateDescriptionPreview() here if not called in dragend
+        // Let's keep it in dragend for now as it signifies the end of the operation.
+    }
+
+    // Helper function for modal drag/drop positioning
+    function getDragAfterElementModal(container, y) {
+        const draggableElements = [...container.querySelectorAll('.description-item-modal:not(.dragging)')];
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    // --- Function to format JSON keys into Titles ---
+    function formatJsonKeyForTitle(jsonKey) {
+        if (!jsonKey || typeof jsonKey !== 'string') {
+            return jsonKey ? jsonKey.toString() + ':' : ''; // Handle non-strings or empty
+        }
+
+        // List of acronyms to keep uppercase
+        const acronyms = ['ID', 'IP', 'OS', 'DNS', 'VPC', 'CVE', 'CWE', 'CVSS', 'URL', 'KEV', 'CISA'];
+        const acronymsLower = acronyms.map(a => a.toLowerCase());
+
+        // Replace dots/underscores with spaces, then split into words
+        const words = jsonKey.replace(/[._]/g, ' ').split(' ');
+
+        const titleWords = words.map(word => {
+            if (!word) return ''; // Skip empty strings resulting from multiple separators
+            const lowerWord = word.toLowerCase();
+            const acronymIndex = acronymsLower.indexOf(lowerWord);
+
+            if (acronymIndex !== -1) {
+                return acronyms[acronymIndex]; // Return the correct casing from the acronyms list
+            } else {
+                // Capitalize the first letter, lowercase the rest
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            }
+        });
+
+        // Join words, filter out empty strings, and add colon
+        return titleWords.filter(Boolean).join(' ') + ':';
+    }
+
+    // --- End Modal Logic ---
 
     // --- Helper Functions ---
 
@@ -826,6 +1095,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Don't reset mappings here, just regenerate the table based on the current state
         console.log("Regenerating table with current mappings:", JSON.stringify(currentMappings));
         generateTable(); // Use the existing generateTable function
+
+        // Hide render button if type is not finding, otherwise ensure it's visible
+        renderDescriptionLayoutBtn.style.display = (currentAttributeType === 'finding') ? 'inline-block' : 'none';
+
+        // Close the modal if the table is regenerated, as mappings might be invalid
+        closeModal(descriptionModal);
     }
 
     function escapeHtml(unsafe) {

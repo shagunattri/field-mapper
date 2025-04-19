@@ -29,8 +29,35 @@
                 <!-- Table will be generated here -->
                 <p>Processed results will appear here.</p>
             </div>
-            <button id="copyBtn" style="display: none;">Copy Table</button>
+            <!-- Button Group -->
+            <div class="button-group">
+                <button id="copyBtn" style="display: none;">Copy Table</button>
+                <button id="renderDescriptionLayoutBtn" style="display: none;">Render Description Layout</button>
+            </div>
+            <!-- End Button Group -->
             <div id="errorMessages" class="error"></div>
+        </div>
+    </div>
+
+    <!-- Description Layout Modal -->
+    <div id="descriptionModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeDescriptionModalBtn">&times;</span>
+            <h2>Arrange and Preview Description Layout</h2>
+            <p>Drag and drop the items below to set the order for the final description. The preview will update automatically.</p>
+            <div class="modal-columns">
+                <div class="modal-column">
+                    <h3>Fields Mapped to Description</h3>
+                    <div id="descriptionSortableItems">
+                        <!-- Draggable items will be populated here -->
+                    </div>
+                </div>
+                <div class="modal-column">
+                    <h3>Rendered Preview</h3>
+                    <pre id="descriptionRenderedPreview" contenteditable="true"></pre>
+                </div>
+            </div>
+            <button id="copyRenderedDescriptionBtn">Copy Rendered Description</button>
         </div>
     </div>
 
