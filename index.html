@@ -9,55 +9,71 @@
 <body>
     <h1>JSON to ArmorCode Field Mapper</h1>
 
-    <div class="container">
-        <div class="input-section">
-            <label for="jsonInput">Paste JSON Response:</label>
-            <textarea id="jsonInput" rows="15" placeholder="Paste your JSON data here..."></textarea>
-
-            <label for="attributeTypeSelect">Select Attribute Type:</label>
-            <select id="attributeTypeSelect" name="attributeType">
-                <option value="finding" selected>Finding Attributes</option>
-                <option value="asset">Asset Attributes</option>
-            </select>
-
-            <button id="processBtn">Process JSON</button>
+    <div class="main-layout">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar">
+            <button id="sidebarToggleBtn" class="sidebar-toggle-btn">
+                <span>&#9776;</span> <!-- Hamburger icon -->
+                <span id="mappingCountBadge" class="mapping-count-badge" style="display: none;">0</span>
+            </button>
+            <h2>Mappings</h2>
+            <ul id="savedMappingsList"></ul>
         </div>
 
-        <div class="output-section">
-            <h2>Mapping Results</h2>
-            <div id="outputTableContainer">
-                <!-- Table will be generated here -->
-                <p>Processed results will appear here.</p>
-            </div>
-            <!-- Button Group -->
-            <div class="button-group">
-                <button id="copyBtn" style="display: none;">Copy Table</button>
-                <button id="renderDescriptionLayoutBtn" style="display: none;">Render Description Layout</button>
-            </div>
-            <!-- End Button Group -->
-            <div id="errorMessages" class="error"></div>
-        </div>
-    </div>
+        <!-- Main Content Area -->
+        <div class="main-content">
+            <div class="container">
+                <div class="input-section">
+                    <label for="jsonInput">Paste JSON Response:</label>
+                    <textarea id="jsonInput" rows="15" placeholder="Paste your JSON data here..."></textarea>
 
-    <!-- Description Layout Modal -->
-    <div id="descriptionModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <span class="close-button" id="closeDescriptionModalBtn">&times;</span>
-            <h2>Arrange and Preview Description Layout</h2>
-            <p>Drag and drop the items below to set the order for the final description sections. The preview will update automatically.</p>
-            <div class="modal-columns">
-                <div class="modal-column modal-column-arrange">
-                    <h3>Arrange Fields</h3>
-                    <div id="combinedSortableItems" class="combined-sortable-list">
-                        <!-- Draggable items and category headers will be populated here -->
+                    <label for="attributeTypeSelect">Select Attribute Type:</label>
+                    <select id="attributeTypeSelect" name="attributeType">
+                        <option value="finding" selected>Finding Attributes</option>
+                        <option value="asset">Asset Attributes</option>
+                    </select>
+
+                    <button id="processBtn">Process JSON</button>
+                </div>
+
+                <div class="output-section">
+                    <h2>Mapping Results</h2>
+                    <div id="outputTableContainer">
+                        <!-- Table will be generated here -->
+                        <p>Processed results will appear here.</p>
                     </div>
-                </div>
-                <div class="modal-column modal-column-preview">
-                    <h3>Rendered Preview</h3>
-                    <div id="combinedPreviewArea" class="combined-preview-area"></div>
+                    <!-- Button Group -->
+                    <div class="button-group">
+                        <button id="copyBtn" style="display: none;">Copy Table</button>
+                        <button id="renderDescriptionLayoutBtn" style="display: none;">Render Description Layout</button>
+                        <button id="saveMappingBtn" style="display: none;" class="sidebar-button">Save Mapping</button>
+                    </div>
+                    <!-- End Button Group -->
+                    <div id="errorMessages" class="error"></div>
                 </div>
             </div>
-            <button id="copyRenderedDescriptionBtn">Copy Rendered Description</button>
+
+            <!-- Description Layout Modal -->
+            <div id="descriptionModal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <span class="close-button" id="closeDescriptionModalBtn">&times;</span>
+                    <h2>Arrange and Preview Description Layout</h2>
+                    <p>Drag and drop the items below to set the order for the final description sections. The preview will update automatically.</p>
+                    <div class="modal-columns">
+                        <div class="modal-column modal-column-arrange">
+                            <h3>Arrange Fields</h3>
+                            <div id="combinedSortableItems" class="combined-sortable-list">
+                                <!-- Draggable items and category headers will be populated here -->
+                            </div>
+                        </div>
+                        <div class="modal-column modal-column-preview">
+                            <h3>Rendered Preview</h3>
+                            <div id="combinedPreviewArea" class="combined-preview-area"></div>
+                        </div>
+                    </div>
+                    <button id="copyRenderedDescriptionBtn">Copy Rendered Description</button>
+                </div>
+            </div>
         </div>
     </div>
 

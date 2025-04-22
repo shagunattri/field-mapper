@@ -62,35 +62,37 @@ textarea {
     flex-grow: 1; /* Allow textarea to grow */
 }
 
-/* Combine button styles for consistency and apply Material look */
+/* Apply consistent blue theme to buttons */
 #processBtn,
-#copyBtn {
-    padding: 10px 24px; /* Adjusted padding */
+#copyBtn,
+#renderDescriptionLayoutBtn,
+#saveMappingBtn {
+    padding: 10px 24px;
     color: white;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 0.875em; /* 14px */
-    font-weight: 500; /* Medium weight */
-    text-transform: uppercase; /* Uppercase text */
+    font-size: 0.875em;
+    font-weight: 500;
+    text-transform: uppercase;
     transition: background-color 0.3s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.2); /* Material shadow */
-    margin-top: 15px; /* Consistent margin */
-    align-self: flex-start; /* Align buttons */
+    box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.2);
+    margin-top: 0;
+    align-self: auto;
+    margin-left: 10px;
+    background-color: #1976D2; /* Default Blue */
 }
 
 #processBtn:hover,
-#copyBtn:hover {
-    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.2); /* Increased shadow on hover */
+#copyBtn:hover,
+#renderDescriptionLayoutBtn:hover,
+#saveMappingBtn:hover {
+    background-color: #1565C0; /* Darker Blue on hover */
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.2);
 }
 
-/* Specific background colors */
-#processBtn {
-    background-color: #1976D2; /* Material Blue 700 */
-}
-
-#processBtn:hover {
-    background-color: #1565C0; /* Material Blue 800 */
+#copyBtn {
+    margin-left: 0; /* No left margin for the first button */
 }
 
 /* Style for the attribute type selection */
@@ -456,7 +458,166 @@ td[contenteditable="true"]:focus {
 }
 
 /* Adjust individual button styles */
-#copyBtn, #renderDescriptionLayoutBtn {
+#copyBtn, #renderDescriptionLayoutBtn, #saveMappingBtn {
     margin-top: 0;
     align-self: auto;
+}
+
+/* NEW: Main Layout Container */
+.main-layout {
+    display: flex;
+    gap: 20px;
+}
+
+/* NEW: Sidebar Styles */
+.sidebar {
+    flex: 0 0 250px; /* Fixed width, don't grow or shrink */
+    background-color: #e9ecef; /* Light grey background */
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    height: calc(100vh - 40px); /* Adjust based on body margin */
+    overflow-y: auto; /* Scroll if content overflows */
+    display: flex;
+    flex-direction: column;
+    transition: flex-basis 0.3s ease-in-out, padding 0.3s ease-in-out; /* Smooth transition */
+}
+
+/* NEW: Sidebar Toggle Button Styles */
+.sidebar-toggle-btn {
+    position: absolute; /* Position relative to sidebar */
+    top: 10px;
+    left: 10px; /* Position on the left */
+    right: auto; /* Remove right positioning */
+    background: none;
+    border: none;
+    font-size: 1.8em; /* Larger icon */
+    color: #6c757d; /* Grey color */
+    cursor: pointer;
+    padding: 0 5px;
+    z-index: 10; /* Ensure it's above other sidebar content */
+    line-height: 1;
+}
+
+.sidebar-collapsed .sidebar-toggle-btn {
+    /* Adjust position slightly if needed when collapsed */
+    left: 5px; /* Adjust left position for collapsed state */
+}
+
+.mapping-count-badge {
+    position: absolute;
+    top: -5px; /* Position relative to the button */
+    right: -8px;
+    background-color: #dc3545; /* Red badge background */
+    color: white;
+    font-size: 0.5em; /* Smaller font size for badge */
+    font-weight: bold;
+    padding: 2px 5px;
+    border-radius: 50%; /* Circular badge */
+    min-width: 18px; /* Ensure minimum size */
+    text-align: center;
+    line-height: 1.2;
+}
+
+/* Hide toggle button text span by default if needed */
+/* .sidebar-toggle-btn > span:first-child { ... } */
+
+/* Collapsed state for the sidebar */
+.sidebar-collapsed {
+    flex-basis: 50px; /* Adjusted width for button + padding */
+    padding: 5px; /* Minimal padding */
+    overflow: hidden; /* Hide content */
+    background-color: transparent; /* Hide background */
+    box-shadow: none; /* Hide shadow */
+    border: none; /* Hide any potential border */
+}
+
+.sidebar-collapsed h2,
+.sidebar-collapsed ul {
+    display: none; /* Hide title and list when collapsed */
+}
+
+.sidebar h2 {
+    margin-top: 0;
+    /* Adjust padding to accommodate toggle on the left */
+    padding-top: 0; 
+    padding-left: 40px; /* Add left padding to title */
+    margin-bottom: 15px;
+    text-align: center;
+    color: #495057; /* Darker grey text */
+    font-size: 1.3em;
+}
+
+#copyBtn,
+#renderDescriptionLayoutBtn,
+#saveMappingBtn { /* Apply button group style to save button */
+    margin-top: 0;
+    align-self: auto;
+    margin-left: 10px; /* Add spacing between buttons */
+}
+
+#copyBtn {
+    margin-left: 0; /* No left margin for the first button */
+}
+
+#savedMappingsList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-grow: 1; /* Allow list to take remaining space */
+    overflow-y: auto; /* Scroll list items if needed */
+}
+
+#savedMappingsList li {
+    background-color: #fff;
+    margin-bottom: 8px;
+    padding: 10px 12px;
+    border-radius: 4px;
+    /* border: 1px solid #dee2e6; */ /* Remove or soften border */
+    border: none; /* Cleaner look like example */
+    cursor: pointer;
+    font-size: 0.95em;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#savedMappingsList li:hover {
+    background-color: #e9ecef; /* Lighter hover like example */
+    /* border-color: #adb5bd; */
+}
+
+/* NEW: Style for the mapping icon */
+.mapping-icon {
+    margin-right: 8px;
+    color: #6c757d; /* Match toggle button color */
+    font-size: 1.1em;
+}
+
+#savedMappingsList li .mapping-name {
+    flex-grow: 1;
+    margin-right: 10px; /* Space before delete button */
+}
+
+#savedMappingsList li .delete-mapping-btn {
+    background: none;
+    border: none;
+    color: #dc3545; /* Red color */
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 2px 4px;
+    line-height: 1;
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+#savedMappingsList li:hover .delete-mapping-btn {
+    opacity: 1;
+}
+
+/* NEW: Main Content Area Styles */
+.main-content {
+    flex: 1; /* Take remaining space */
+    /* The container inside will handle its own layout */
 } 

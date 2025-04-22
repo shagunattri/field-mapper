@@ -82,6 +82,17 @@ document.addEventListener('DOMContentLoaded', () => {
         'total_count', 'ids', 'total_pages', 'page', 'page_size', 'data',
     ];
 
+    // --- NEW: Sidebar Elements ---
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggleBtn = document.getElementById('sidebarToggleBtn'); // New toggle button
+    const mappingCountBadge = document.getElementById('mappingCountBadge'); // New badge
+    const saveMappingBtn = document.getElementById('saveMappingBtn');
+    const savedMappingsList = document.getElementById('savedMappingsList');
+
+    // --- NEW: Saved Mappings State ---
+    let savedMappings = []; // Array to hold { name: string, json: string, config: object, type: string }
+    const LOCAL_STORAGE_KEY = 'fieldMapperSavedMappings';
+
     processBtn.addEventListener('click', () => {
         const selectedAttributeType = attributeSelect.value;
         currentAttributeType = selectedAttributeType;
@@ -203,6 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
             generateTable(); // Generate the unified table
 
             copyBtn.style.display = 'block';
+            saveMappingBtn.style.display = 'inline-block'; // Show Save Button
             // Show render button only if findings were processed successfully
             if (currentAttributeType === 'finding') {
                 renderDescriptionLayoutBtn.style.display = 'inline-block';
@@ -216,6 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
             container.classList.remove('results-active');
             copyBtn.style.display = 'none';
             renderDescriptionLayoutBtn.style.display = 'none'; // Hide on error
+            saveMappingBtn.style.display = 'none'; // Hide Save button on error
             clearSummaryDisplay();
         }
     });
@@ -1462,4 +1475,226 @@ document.addEventListener('DOMContentLoaded', () => {
          summaryContainer.prepend(summaryText); // Add summary text before the list
          summaryContainer.appendChild(list);
     }
+
+    // --- NEW: Local Storage Functions ---
+    function loadMappingsFromStorage() {
+        const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (storedData) {
+            try {
+                savedMappings = JSON.parse(storedData);
+                if (!Array.isArray(savedMappings)) {
+                    savedMappings = []; // Reset if data is corrupted
+                    console.warn('Stored mapping data was not an array, resetting.');
+                }
+            } catch (e) {
+                console.error('Error parsing saved mappings from Local Storage:', e);
+                savedMappings = []; // Reset on parsing error
+            }
+        } else {
+            savedMappings = []; // Initialize if nothing is stored
+        }
+        console.log('Loaded mappings:', savedMappings.length);
+        // Update sidebar collapse state based on user interaction, not load
+        // updateSidebarCollapseState(); // REMOVED
+    }
+
+    function saveMappingsToStorage() {
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedMappings));
+        } catch (e) {
+            console.error('Error saving mappings to Local Storage:', e);
+            // Potentially notify user if storage is full
+            alert('Error saving mapping. Local storage might be full.');
+        }
+    }
+
+    function addMapping(name, json, config, type) {
+        // Check for duplicate name (case-insensitive)
+        const existingIndex = savedMappings.findIndex(m => m.name.toLowerCase() === name.toLowerCase());
+        if (existingIndex !== -1) {
+            if (!confirm(`A mapping named "${name}" already exists. Overwrite it?`)) {
+                return false; // User cancelled overwrite
+            }
+            // Remove existing entry before adding the new one
+            savedMappings.splice(existingIndex, 1);
+        }
+
+        const newMapping = {
+            name: name,
+            json: json,
+            config: JSON.parse(JSON.stringify(config)), // Deep copy of config
+            type: type
+        };
+        savedMappings.push(newMapping);
+        savedMappings.sort((a, b) => a.name.localeCompare(b.name)); // Keep sorted
+        saveMappingsToStorage();
+        // updateSidebarCollapseState(); // REMOVED - Manual toggle now
+        renderSavedMappingsList(); // Update list which updates badge
+        return true;
+    }
+
+    function deleteMapping(nameToDelete) {
+        savedMappings = savedMappings.filter(m => m.name !== nameToDelete);
+        saveMappingsToStorage();
+        renderSavedMappingsList(); // Re-render the list after deletion, updates badge
+        // updateSidebarCollapseState(); // REMOVED - Manual toggle now
+    }
+
+    // --- NEW: UI Function for Sidebar ---
+    function renderSavedMappingsList() {
+        savedMappingsList.innerHTML = ''; // Clear current list
+        if (savedMappings.length === 0) {
+            savedMappingsList.innerHTML = '<li class="no-mappings"><em>No mappings saved yet.</em></li>';
+            return;
+        }
+
+        savedMappings.forEach(mapping => {
+            const li = document.createElement('li');
+            li.dataset.mappingName = mapping.name;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.classList.add('mapping-name');
+            nameSpan.textContent = mapping.name;
+            nameSpan.title = `Click to load mapping: ${mapping.name}`; // Tooltip
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.classList.add('delete-mapping-btn');
+            deleteBtn.innerHTML = '&times;'; // Multiplication sign for delete
+            deleteBtn.title = `Delete mapping: ${mapping.name}`;
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent li click listener from firing
+                if (confirm(`Are you sure you want to delete the mapping "${mapping.name}"?`)) {
+                    deleteMapping(mapping.name);
+                }
+            });
+
+            // NEW: Add placeholder for an icon
+            const iconSpan = document.createElement('span');
+            iconSpan.classList.add('mapping-icon');
+            iconSpan.innerHTML = '&#128196;'; // Simple document icon
+
+            // Assemble the list item
+            li.appendChild(iconSpan); // Add icon first
+            li.appendChild(nameSpan);
+            li.appendChild(deleteBtn);
+
+            // Add listener to load the mapping when the list item (not the delete button) is clicked
+            li.addEventListener('click', () => {
+                loadMapping(mapping.name);
+            });
+
+            savedMappingsList.appendChild(li);
+        });
+
+        // Update badge count
+        const count = savedMappings.length;
+        mappingCountBadge.textContent = count;
+        mappingCountBadge.style.display = count > 0 ? 'inline-block' : 'none';
+
+    }
+
+    // --- NEW: Load Mapping Function ---
+    function loadMapping(nameToLoad) {
+        const mapping = savedMappings.find(m => m.name === nameToLoad);
+        if (!mapping) {
+            alert(`Error: Could not find saved mapping named "${nameToLoad}".`);
+            return;
+        }
+
+        console.log(`Loading mapping: ${nameToLoad}`);
+
+        // 1. Restore JSON Input
+        jsonInput.value = mapping.json;
+
+        // 2. Restore Attribute Type
+        currentAttributeType = mapping.type;
+        attributeSelect.value = currentAttributeType;
+
+        // 3. Restore Mappings (important: use a deep copy)
+        currentMappings = JSON.parse(JSON.stringify(mapping.config));
+
+        // 4. Reset derived state & UI
+        flattenedJsonData = {}; // Will be recalculated
+        discoveredJsonKeys = []; // Will be recalculated
+        container.classList.remove('results-active'); // Hide results initially
+        outputTableContainer.innerHTML = '<p>Loading mapping...</p>';
+        copyBtn.style.display = 'none';
+        renderDescriptionLayoutBtn.style.display = 'none';
+        saveMappingBtn.style.display = 'none'; // Hide Save button while loading
+        closeModal(descriptionModal); // Close modal if open
+        clearSummaryDisplay();
+
+        // 5. Simulate clicking the 'Process JSON' button to re-analyze and build the table
+        // This reuses the existing processing logic cleanly.
+        // Need to ensure the event listener exists before dispatching
+        if (processBtn) {
+            // We need to temporarily override the fields list based on the loaded type
+            // before triggering the process click
+            if (currentAttributeType === 'asset') {
+                armorCodeFields = assetFields;
+                armorCodeFieldsLower = assetFieldsLower;
+                allArmorCodeFieldsWithNone = allAssetFieldsWithNone;
+            } else { // Default to 'finding'
+                armorCodeFields = findingFields;
+                armorCodeFieldsLower = findingFieldsLower;
+                allArmorCodeFieldsWithNone = allFindingFieldsWithNone;
+            }
+             // Use setTimeout to ensure the DOM update for attributeSelect.value is processed
+             // before the click event simulation happens.
+             setTimeout(() => {
+                  processBtn.click();
+                  // Optional: Add a visual cue that loading finished
+                  errorMessages.textContent = `Mapping "${nameToLoad}" loaded successfully.`;
+                  setTimeout(() => errorMessages.textContent = '', 3000); // Clear message after 3s
+             }, 0);
+        } else {
+            console.error('Process button not found, cannot reload table.');
+            outputTableContainer.innerHTML = '<p>Error: Process button not found.</p>';
+        }
+    }
+
+    // --- NEW: Sidebar Toggle Listener ---
+    sidebarToggleBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('sidebar-collapsed');
+        // Optionally update badge visibility based on collapsed state
+        const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+        const count = savedMappings.length;
+        // Show badge if collapsed and count > 0, or always if count > 0
+        mappingCountBadge.style.display = count > 0 ? 'inline-block' : 'none'; 
+        // Alternatively: mappingCountBadge.style.display = (isCollapsed && count > 0) ? 'inline-block' : 'none';
+    });
+
+    // --- Re-applying Save Button Listener ---
+    // Ensure this listener is correctly placed within DOMContentLoaded
+    saveMappingBtn.addEventListener('click', () => {
+        // Check if mappings exist (i.e., after processing)
+        if (!currentMappings || Object.keys(currentMappings).length === 0) {
+            alert('Please process some JSON and configure mappings before saving.');
+            return;
+        }
+
+        const mappingName = prompt('Enter a name for this mapping configuration:');
+        if (!mappingName || mappingName.trim() === '') {
+            // Silently cancel if prompt is empty or cancelled
+            // alert('Save cancelled. Please provide a valid name.'); 
+            return;
+        }
+
+        const jsonToSave = jsonInput.value;
+        const configToSave = currentMappings;
+        const typeToSave = currentAttributeType;
+
+        if (addMapping(mappingName.trim(), jsonToSave, configToSave, typeToSave)) {
+            renderSavedMappingsList(); // Update the list if save/overwrite was successful
+            alert(`Mapping "${mappingName.trim()}" saved successfully!`);
+             // Optionally expand sidebar if it was collapsed
+             sidebar.classList.remove('sidebar-collapsed'); 
+        } // User cancellation on overwrite is handled within addMapping
+    });
+
+    // --- Initial Load ---
+    loadMappingsFromStorage();
+    renderSavedMappingsList(); // Renders list and updates badge
+    // Ensure sidebar is expanded by default
+    sidebar.classList.remove('sidebar-collapsed');
 }); 
