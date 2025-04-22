@@ -44,17 +44,17 @@
         <div class="modal-content">
             <span class="close-button" id="closeDescriptionModalBtn">&times;</span>
             <h2>Arrange and Preview Description Layout</h2>
-            <p>Drag and drop the items below to set the order for the final description. The preview will update automatically.</p>
+            <p>Drag and drop the items below to set the order for the final description sections. The preview will update automatically.</p>
             <div class="modal-columns">
-                <div class="modal-column">
-                    <h3>Fields Mapped to Description</h3>
-                    <div id="descriptionSortableItems">
-                        <!-- Draggable items will be populated here -->
+                <div class="modal-column modal-column-arrange">
+                    <h3>Arrange Fields</h3>
+                    <div id="combinedSortableItems" class="combined-sortable-list">
+                        <!-- Draggable items and category headers will be populated here -->
                     </div>
                 </div>
-                <div class="modal-column">
+                <div class="modal-column modal-column-preview">
                     <h3>Rendered Preview</h3>
-                    <pre id="descriptionRenderedPreview" contenteditable="true"></pre>
+                    <div id="combinedPreviewArea" class="combined-preview-area"></div>
                 </div>
             </div>
             <button id="copyRenderedDescriptionBtn">Copy Rendered Description</button>

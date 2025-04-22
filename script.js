@@ -12,10 +12,28 @@ document.addEventListener('DOMContentLoaded', () => {
     // Description Modal Elements
     const descriptionModal = document.getElementById('descriptionModal');
     const closeDescriptionModalBtn = document.getElementById('closeDescriptionModalBtn');
-    const descriptionSortableItems = document.getElementById('descriptionSortableItems');
-    const descriptionRenderedPreview = document.getElementById('descriptionRenderedPreview');
+    const combinedSortableItemsList = document.getElementById('combinedSortableItems');
+    const combinedPreviewArea = document.getElementById('combinedPreviewArea');
     const copyRenderedDescriptionBtn = document.getElementById('copyRenderedDescriptionBtn');
-    let draggedItemModal = null; // For drag/drop within modal
+
+    // Description Modal State
+    let draggedItemModal = null; // For drag/drop tracking
+    // Stores the ordered list of items, including category markers
+    // Example: [{type: 'header', category: 'description'}, {type: 'item', key: 'plugin.description'}, ...]
+    let modalLayoutData = [];
+    const descriptionCategories = ['description', 'steps', 'remediation', 'impact']; // Order matters
+    const descriptionCategoryFields = {
+        description: 'Description',
+        steps: 'Steps to Reproduce',
+        remediation: 'Remediation',
+        impact: 'Impact'
+    };
+    const categoryTitleMap = {
+        description: "Description",
+        steps: "Steps to Reproduce",
+        remediation: "Remediation",
+        impact: "Impact"
+    };
 
     // Store discovered JSON keys for dropdown
     let discoveredJsonKeys = [];
@@ -158,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
             armorCodeFields.forEach(field => currentMappings[field] = null);
 
             // Define which fields can have multiple mappings (must match handlers)
-            const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description'];
+            const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact'];
 
             // Apply initial mappings found above
             for (const [jsonKey, armorField] of Object.entries(initialMappingResults)) {
@@ -231,19 +249,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // --- Description Layout Modal Logic ---
+    // --- Description Layout Modal Logic (Simplified) ---
 
     // Open Modal
     renderDescriptionLayoutBtn.addEventListener('click', () => {
-        const descriptionKeys = currentMappings['Description'];
+        // 1. Gather all keys mapped to the relevant AC fields
+        const keysByCategory = {};
+        let totalKeys = 0;
+        descriptionCategories.forEach(cat => {
+            const acField = descriptionCategoryFields[cat];
+            const mappedKeys = currentMappings[acField];
+            if (Array.isArray(mappedKeys)) {
+                keysByCategory[cat] = [...mappedKeys]; // Copy array
+                totalKeys += mappedKeys.length;
+            } else if (typeof mappedKeys === 'string') {
+                keysByCategory[cat] = [mappedKeys]; // Put single key in array
+                totalKeys += 1;
+            } else {
+                keysByCategory[cat] = []; // No keys mapped
+            }
+        });
 
-        if (Array.isArray(descriptionKeys) && descriptionKeys.length > 0) {
-            populateSortableItems(descriptionKeys);
-            updateDescriptionPreview(); // Initial preview
-            openModal(descriptionModal);
-        } else {
-            alert('No JSON fields are currently mapped to the Description field.');
+        if (totalKeys === 0) {
+            alert('No JSON fields are currently mapped to Description, Steps to Reproduce, Remediation, or Impact.');
+            return;
         }
+
+        // 2. Initialize modalLayoutData based on gathered keys
+        modalLayoutData = [];
+        descriptionCategories.forEach(cat => {
+            if (keysByCategory[cat].length > 0) {
+                // Add category header marker
+                modalLayoutData.push({ type: 'header', category: cat });
+                // Add item markers for this category
+                keysByCategory[cat].forEach(key => {
+                    modalLayoutData.push({ type: 'item', key: key, category: cat });
+                });
+            }
+        });
+
+        // 3. Populate the UI
+        populateCombinedList();
+        updateCombinedPreview();
+        openModal(descriptionModal);
     });
 
     // Close Modal
@@ -263,189 +311,286 @@ document.addEventListener('DOMContentLoaded', () => {
          if (modalElement) modalElement.style.display = 'none';
     }
 
-    // Populate Draggable Items
-    function populateSortableItems(keys) {
-        descriptionSortableItems.innerHTML = ''; // Clear previous items
-        keys.forEach(jsonKey => {
-            const value = flattenedJsonData[jsonKey];
-            const item = document.createElement('div');
-            item.classList.add('description-item-modal'); // Use modal-specific class
-            item.draggable = true;
-            item.dataset.jsonKey = jsonKey;
+    // Populate the single combined sortable list
+    function populateCombinedList() {
+        combinedSortableItemsList.innerHTML = ''; // Clear previous content
 
-            const keySpan = document.createElement('span');
-            keySpan.classList.add('item-key');
-            keySpan.textContent = jsonKey;
+        modalLayoutData.forEach(entry => {
+            if (entry.type === 'header') {
+                const headerDiv = document.createElement('div');
+                headerDiv.classList.add('sortable-category-header');
+                headerDiv.textContent = categoryTitleMap[entry.category];
+                headerDiv.dataset.category = entry.category;
+                combinedSortableItemsList.appendChild(headerDiv);
+            } else if (entry.type === 'item') {
+                const jsonKey = entry.key;
+                const value = flattenedJsonData[jsonKey];
+                const item = document.createElement('div');
+                item.classList.add('description-item-modal');
+                item.draggable = true;
+                item.dataset.jsonKey = jsonKey;
+                item.dataset.category = entry.category; // Store original category
 
-            const valuePreviewSpan = document.createElement('span');
-            valuePreviewSpan.classList.add('item-value-preview');
-            valuePreviewSpan.textContent = formatValue(value); // Show formatted value preview
+                const keySpan = document.createElement('span');
+                keySpan.classList.add('item-key');
+                keySpan.textContent = jsonKey;
 
-            item.appendChild(keySpan);
-            item.appendChild(valuePreviewSpan);
+                const valuePreviewSpan = document.createElement('span');
+                valuePreviewSpan.classList.add('item-value-preview');
+                valuePreviewSpan.textContent = formatValue(value);
 
-            // Add Drag Listeners
-            item.addEventListener('dragstart', handleDragStartModal);
-            item.addEventListener('dragend', handleDragEndModal);
+                item.appendChild(keySpan);
+                item.appendChild(valuePreviewSpan);
 
-            descriptionSortableItems.appendChild(item);
-        });
+                // Add Drag Listeners to the item
+                item.addEventListener('dragstart', handleDragStartModal);
+                item.addEventListener('dragend', handleDragEndModal);
 
-        // Add common listeners to the container *once*
-        descriptionSortableItems.removeEventListener('dragover', handleDragOverModal);
-        descriptionSortableItems.removeEventListener('drop', handleDropModal);
-        descriptionSortableItems.addEventListener('dragover', handleDragOverModal);
-        descriptionSortableItems.addEventListener('drop', handleDropModal);
-    }
-
-    // Update Rendered Preview - Generates HTML for a single block appearance
-    function updateDescriptionPreview() {
-        let previewHTML = ''; // Build HTML string for innerHTML
-        const items = descriptionSortableItems.querySelectorAll('.description-item-modal');
-        items.forEach((item, index) => {
-            const key = item.dataset.jsonKey; // Get key from data attribute
-            const value = flattenedJsonData[key] || ''; // Get full value from data store
-            const formattedValue = formatValue(value);
-            const formattedTitle = formatJsonKeyForTitle(key); // <<< USE THE FORMATTED TITLE
-
-            // Build HTML content: Use <strong> for formatted title, escape value, use newlines
-            previewHTML += `<strong>${escapeHtml(formattedTitle)}</strong>\n`;
-            previewHTML += `${escapeHtml(formattedValue)}`; // Add the escaped value
-
-            // Add double newline for spacing between items, but not after the last one
-            if (index < items.length - 1) {
-                 previewHTML += '\n\n'; 
+                combinedSortableItemsList.appendChild(item);
             }
         });
 
-        // Set innerHTML of the <pre> tag to render the HTML tags
-        if (previewHTML) {
-            descriptionRenderedPreview.innerHTML = previewHTML;
-        } else {
-            descriptionRenderedPreview.innerHTML = '<p style="color: #888; font-style: italic;">No items to preview.</p>';
-        }
-        // Note: The <pre> tag preserves the newline characters in the HTML string.
-        // The browser renders the <strong> tag.
+        // Add common listeners to the container *once* after populating
+        combinedSortableItemsList.removeEventListener('dragover', handleDragOverModal);
+        combinedSortableItemsList.removeEventListener('drop', handleDropModal);
+        combinedSortableItemsList.addEventListener('dragover', handleDragOverModal);
+        combinedSortableItemsList.addEventListener('drop', handleDropModal);
     }
 
-    // Copy Rendered Description - Copies HTML (single pre) and Plain Text (no code fences)
+    // Update the single combined preview area
+    function updateCombinedPreview() {
+        let previewHTML = '';
+        let firstSection = true;
+
+        if (modalLayoutData.length === 0) {
+            combinedPreviewArea.innerHTML = `<p style="color: #888; font-style: italic;">(No items mapped or arranged)</p>`;
+            return;
+        }
+
+        modalLayoutData.forEach((entry, index) => {
+            if (entry.type === 'header') {
+                // Add separator before the new header (unless it's the first section)
+                if (!firstSection) {
+                    previewHTML += `<hr style="margin: 15px 0; border: none; border-top: 1px solid #eee;">`; // Use HR for visual separation
+                }
+                previewHTML += `<h4 style="margin-bottom: 8px; font-weight: bold;">${escapeHtml(categoryTitleMap[entry.category])}</h4>`; // Use H4 for section titles
+                firstSection = false;
+            } else if (entry.type === 'item') {
+                const key = entry.key;
+                const value = flattenedJsonData[key] || '';
+                const formattedValue = formatValue(value); // Get the potentially multi-line value
+                const formattedTitle = formatJsonKeyForTitle(key);
+
+                // Add item details using paragraphs and line breaks
+                previewHTML += `<p style="margin-bottom: 10px;">`; // Add some space below each item
+                previewHTML += `<strong>${escapeHtml(formattedTitle)}</strong><br>`; // Title on its own line
+                // Replace newline characters in the value with <br> tags for HTML rendering
+                previewHTML += escapeHtml(formattedValue).replace(/\n/g, '<br>');
+                previewHTML += `</p>`;
+            }
+        });
+
+        combinedPreviewArea.innerHTML = previewHTML;
+    }
+
+    // Copy the structured content from the single rendered preview
     copyRenderedDescriptionBtn.addEventListener('click', async () => {
         let markdownText = '';
-        let htmlContentForPre = ''; // Content to go inside the single <pre>
-        const items = descriptionSortableItems.querySelectorAll('.description-item-modal');
+        let htmlContent = '';
+        let hasContent = false;
 
-        // Regenerate both Markdown (no fences) and HTML (single pre) strings
-        items.forEach((item, index) => {
-             const key = item.dataset.jsonKey;
-             const value = flattenedJsonData[key] || '';
-             const formattedValue = formatValue(value);
-             const formattedTitle = formatJsonKeyForTitle(key); // <<< USE THE FORMATTED TITLE
-             const escapedValue = escapeHtml(formattedValue);
-             const escapedFormattedTitle = escapeHtml(formattedTitle);
+        modalLayoutData.forEach((entry, index) => {
+             if (entry.type === 'header') {
+                 hasContent = true;
+                 const categoryTitle = categoryTitleMap[entry.category];
+                 if (index > 0) { // Add separator before new section in both formats
+                    markdownText += `\n-----\n\n`;
+                    htmlContent += `<hr>`;
+                 }
+                 markdownText += `## ${categoryTitle}\n\n`;
+                 htmlContent += `<h2>${escapeHtml(categoryTitle)}</h2>`;
+             } else if (entry.type === 'item') {
+                 hasContent = true;
+                 const key = entry.key;
+                 const value = flattenedJsonData[key] || '';
+                 const formattedValue = formatValue(value);
+                 const formattedTitle = formatJsonKeyForTitle(key);
+                 const escapedValue = escapeHtml(formattedValue);
+                 const escapedFormattedTitle = escapeHtml(formattedTitle);
 
-             // --- Build Markdown (No Code Fences) --- 
-             markdownText += `**${formattedTitle}**\n`; // Use formatted title (includes colon), make bold
-             markdownText += `${formattedValue}`; // Just the value
+                 // Markdown
+                 markdownText += `**${formattedTitle}**\n${formattedValue}`;
+                 // HTML
+                 htmlContent += `<p><strong>${escapedFormattedTitle}</strong><br>${escapedValue.replace(/\n/g, '<br>')}</p>`;
 
-             // --- Build HTML content for the single <pre> block --- 
-             htmlContentForPre += `<strong>${escapedFormattedTitle}</strong>\n`; // Use formatted title
-             htmlContentForPre += `${escapedValue}`;
-
-             if (index < items.length - 1) {
-                  markdownText += '\n\n';
-                  htmlContentForPre += '\n\n'; 
+                 // Check if next item is different type or end of list to add spacing
+                 const nextEntry = modalLayoutData[index + 1];
+                 if (nextEntry && nextEntry.type === 'item') {
+                    markdownText += '\n\n'; // Space between items in the same category
+                 }
              }
         });
 
-        // Final HTML wraps the content in one <pre>
-        const finalHtmlText = `<pre style="white-space: pre-wrap; word-wrap: break-word; font-family: sans-serif; font-size: 1em;">${htmlContentForPre}</pre>`;
 
-        if (markdownText) { // Check if there is text to copy
-             try {
-                // Create blobs for different formats
-                const blobHtml = new Blob([finalHtmlText], { type: 'text/html' });
-                const blobText = new Blob([markdownText], { type: 'text/plain' });
-                
-                // Create a ClipboardItem
-                const clipboardItem = new ClipboardItem({
-                    'text/html': blobHtml,
-                    'text/plain': blobText
-                });
+        if (!hasContent) {
+            alert('Nothing to copy. Please add/map fields to description sections.');
+            return;
+        }
 
-                // Write the item to the clipboard
-                await navigator.clipboard.write([clipboardItem]);
+        // --- Final Clipboard Operations ---
+        markdownText = markdownText.trim();
+        htmlContent = htmlContent.trim();
 
-                // --- Feedback --- 
-                copyRenderedDescriptionBtn.textContent = 'Copied!';
+        try {
+            // Use ClipboardItem API for rich text
+            const blobHtml = new Blob([htmlContent], { type: 'text/html' });
+            const blobText = new Blob([markdownText], { type: 'text/plain' });
+            const clipboardItem = new ClipboardItem({
+                'text/html': blobHtml,
+                'text/plain': blobText
+            });
+            await navigator.clipboard.write([clipboardItem]);
+
+             // --- Feedback ---
+            copyRenderedDescriptionBtn.textContent = 'Copied!';
+            copyRenderedDescriptionBtn.disabled = true;
+            setTimeout(() => {
+                copyRenderedDescriptionBtn.textContent = 'Copy Rendered Description';
+                copyRenderedDescriptionBtn.disabled = false;
+            }, 2000);
+
+        } catch (err) {
+            console.error('Failed to copy rendered description using ClipboardItem: ', err);
+            // Fallback attempt: Try copying only plain text (Markdown)
+            try {
+                await navigator.clipboard.writeText(markdownText);
+                copyRenderedDescriptionBtn.textContent = 'Copied as Markdown!';
                 copyRenderedDescriptionBtn.disabled = true;
                 setTimeout(() => {
                     copyRenderedDescriptionBtn.textContent = 'Copy Rendered Description';
                     copyRenderedDescriptionBtn.disabled = false;
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy rendered description using ClipboardItem: ', err);
-                // Fallback attempt: Try copying only plain text (Markdown)
-                try {
-                    await navigator.clipboard.writeText(markdownText);
-                     copyRenderedDescriptionBtn.textContent = 'Copied as Markdown!'; // Indicate fallback
-                     copyRenderedDescriptionBtn.disabled = true;
-                     setTimeout(() => {
-                        copyRenderedDescriptionBtn.textContent = 'Copy Rendered Description';
-                        copyRenderedDescriptionBtn.disabled = false;
-                     }, 2500); // Slightly longer timeout for fallback message
-                     console.warn('ClipboardItem failed, copied as plain text (Markdown) instead.')
-                } catch (textErr) {
-                     console.error('Failed to copy plain text fallback: ', textErr);
-                     alert('Failed to copy description. Clipboard API error.');
-                }
+                }, 2500);
+                 console.warn('ClipboardItem failed, copied as plain text (Markdown) instead.');
+            } catch (textErr) {
+                console.error('Failed to copy plain text fallback: ', textErr);
+                alert('Failed to copy description. Clipboard API error.');
             }
-        } else {
-            alert('Nothing to copy.');
         }
     });
 
-    // --- Drag and Drop Handlers for Modal ---
+    // --- Drag and Drop Handlers for Modal (Simplified) ---
     function handleDragStartModal(e) {
-        draggedItemModal = this;
+        // Only allow dragging items, not headers
+        if (!this.classList.contains('description-item-modal')) {
+            e.preventDefault();
+            return;
+        }
+        draggedItemModal = this; // The element being dragged
         setTimeout(() => this.classList.add('dragging'), 0);
         e.dataTransfer.effectAllowed = 'move';
+        // Store JSON key (enough data to identify the item)
         e.dataTransfer.setData('text/plain', this.dataset.jsonKey);
     }
 
     function handleDragEndModal() {
-        this.classList.remove('dragging');
-        // Update preview *after* drop is visually complete
-        if (draggedItemModal) { // Check if drop was successful (draggedItemModal not cleared)
-           updateDescriptionPreview();
-        }
-        draggedItemModal = null;
+        // Clear dragging state regardless of drop success
+         if (draggedItemModal) {
+            draggedItemModal.classList.remove('dragging');
+         }
+         draggedItemModal = null;
+         // Update the preview after drop completes
+         updateCombinedPreview();
     }
 
     function handleDragOverModal(e) {
-        e.preventDefault();
+        e.preventDefault(); // Necessary to allow dropping
         e.dataTransfer.dropEffect = 'move';
-        const afterElement = getDragAfterElementModal(descriptionSortableItems, e.clientY);
-        const currentDragging = descriptionSortableItems.querySelector('.dragging');
 
-        if (currentDragging) {
-            if (afterElement == null) {
-                 descriptionSortableItems.appendChild(currentDragging);
-            } else {
-                 descriptionSortableItems.insertBefore(currentDragging, afterElement);
+        const targetList = combinedSortableItemsList; // Only one list now
+        if (!targetList || !draggedItemModal) return;
+
+        const afterElement = getDragAfterElementModal(targetList, e.clientY);
+
+        // Insert the dragged item visually for immediate feedback
+        if (afterElement == null) {
+            targetList.appendChild(draggedItemModal);
+        } else {
+            // Prevent dropping onto a header
+            if (!afterElement.classList.contains('sortable-category-header')) {
+                targetList.insertBefore(draggedItemModal, afterElement);
             }
         }
     }
 
     function handleDropModal(e) {
         e.preventDefault();
-        // Insertion happens in dragover
-        // We might need to call updateDescriptionPreview() here if not called in dragend
-        // Let's keep it in dragend for now as it signifies the end of the operation.
+        const targetList = combinedSortableItemsList; // Only one list now
+
+        if (!targetList || !draggedItemModal) {
+            console.warn("Drop occurred but draggedItemModal is null.");
+            return;
+        }
+
+        // --- Update the underlying modalLayoutData state --- //
+        const currentKey = draggedItemModal.dataset.jsonKey;
+
+        // 1. Find the current index of the dragged item in the DOM
+        const domItems = Array.from(targetList.children);
+        const newDomIndex = domItems.indexOf(draggedItemModal);
+        if (newDomIndex < 0) {
+             console.error(`Could not find dropped item ${currentKey} in the DOM.`);
+             return; // Abort if visual item not found
+        }
+
+        // 2. Remove the item marker from its old position in modalLayoutData
+        const oldLayoutIndex = modalLayoutData.findIndex(item => item.type === 'item' && item.key === currentKey);
+        if (oldLayoutIndex < 0) {
+            console.error(`Could not find item ${currentKey} in modalLayoutData.`);
+            return; // Abort if data item not found
+        }
+        const [removedItemData] = modalLayoutData.splice(oldLayoutIndex, 1);
+
+        // 3. Determine the new position in modalLayoutData based on the DOM position
+        let newLayoutIndex = 0;
+        let elementCounter = 0;
+        for (let i = 0; i < domItems.length; i++) {
+            if (domItems[i] === draggedItemModal) {
+                newLayoutIndex = elementCounter;
+                break;
+            }
+            // Only increment counter for actual data elements (items or headers)
+            if (domItems[i].classList.contains('description-item-modal') || domItems[i].classList.contains('sortable-category-header')) {
+                 elementCounter++;
+            }
+        }
+
+        // 4. Insert the item marker at the new position in modalLayoutData
+        modalLayoutData.splice(newLayoutIndex, 0, removedItemData);
+
+        // 5. Recalculate category for the moved item and potentially others
+        // (Headers don't move, so find the preceding header for the dropped item)
+        let currentItemCategory = 'description'; // Default if no header found before it
+        for (let i = newLayoutIndex - 1; i >= 0; i--) {
+             if (modalLayoutData[i].type === 'header') {
+                 currentItemCategory = modalLayoutData[i].category;
+                 break;
+             }
+        }
+        removedItemData.category = currentItemCategory;
+        draggedItemModal.dataset.category = currentItemCategory; // Update DOM dataset too
+
+        // --- Update the Preview --- (moved to dragend for efficiency)
+        // updateCombinedPreview();
+
+        console.log("Updated modalLayoutData:", modalLayoutData);
+
     }
 
-    // Helper function for modal drag/drop positioning
+    // Helper function for modal drag/drop positioning (Simplified)
     function getDragAfterElementModal(container, y) {
-        const draggableElements = [...container.querySelectorAll('.description-item-modal:not(.dragging)')];
+         // Consider all direct children (items and headers)
+         const draggableElements = [...container.querySelectorAll(':scope > .description-item-modal:not(.dragging), :scope > .sortable-category-header')];
+
         return draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
@@ -457,7 +602,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
-    // --- Function to format JSON keys into Titles ---
+    // --- Helper to format JSON Key for Display Titles ---
     function formatJsonKeyForTitle(jsonKey) {
         if (!jsonKey || typeof jsonKey !== 'string') {
             return jsonKey ? jsonKey.toString() + ':' : ''; // Handle non-strings or empty
@@ -875,7 +1020,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`AC Change: Row JSON Key: ${originalJsonKey}, New AC Field: ${newArmorCodeField}, Is Placeholder Row: ${isUnmappedAcRow}`);
 
         // Define which fields can have multiple mappings
-        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description'];
+        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact'];
 
         if (isUnmappedAcRow) {
             // --- Handling change on a placeholder AC row ---
@@ -977,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`JSON Key Change: Target AC Field '${targetArmorCodeField}', Selected JSON Key: '${selectedJsonKey}'`);
 
         // Define which fields can have multiple mappings
-        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description'];
+        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact'];
 
         // 1. Clear any previous mapping *for this specific ArmorCode field*
         if (currentMappings[targetArmorCodeField]) {

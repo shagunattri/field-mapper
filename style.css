@@ -237,12 +237,12 @@ td[contenteditable="true"]:focus {
   margin: auto; /* Centered */
   padding: 25px;
   border: 1px solid #888;
-  width: 80%; /* Adjust as needed */
-  max-width: 900px; /* Max width */
+  width: 90%; /* Increased width */
+  max-width: 1200px; /* Increased max width */
   border-radius: 8px;
   box-shadow: 0 5px 15px rgba(0,0,0,0.3);
   position: relative;
-  max-height: 85vh; /* Limit height */
+  max-height: 90vh; /* Increased max height */
   display: flex;
   flex-direction: column;
 }
@@ -300,50 +300,76 @@ td[contenteditable="true"]:focus {
     padding-bottom: 5px;
 }
 
-#descriptionSortableItems {
+/* Container for each category in the arrange column */
+/* .description-category-container { ... } */ /* Remove or comment out */
+/* .description-category-container h4 { ... } */ /* Remove or comment out */
+
+/* Styling for the sortable lists within each category */
+/* .description-sortable-list { ... } */ /* Remove or comment out */
+
+/* NEW: Styling for the combined sortable list */
+.combined-sortable-list {
     border: 1px dashed #ccc;
-    padding: 10px;
+    padding: 15px;
     background-color: #f9f9f9;
     border-radius: 4px;
-    min-height: 200px;
+    min-height: 300px; /* Adjust as needed */
     flex-grow: 1;
-    overflow-y: auto; /* Allow scrolling for many items */
+    overflow-y: auto; /* Allow scrolling */
 }
 
-#descriptionRenderedPreview {
+/* NEW: Styling for category headers WITHIN the combined list */
+.sortable-category-header {
+    font-weight: bold;
+    font-size: 1.05em;
+    color: #444;
+    margin-top: 15px;
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #ddd;
+    cursor: default; /* Not draggable */
+}
+.combined-sortable-list > .sortable-category-header:first-child {
+    margin-top: 0; /* No top margin for the very first header */
+}
+
+/* Ensure columns in modal handle overflow */
+.modal-column-arrange, .modal-column-preview {
+    overflow-y: auto; /* Allow scrolling if content exceeds height */
+    max-height: 65vh; /* Limit height relative to viewport */
+    padding-bottom: 10px; /* Add some padding at the bottom */
+}
+
+/* Container for each preview section */
+/* .description-preview-section { ... } */ /* Remove or comment out */
+/* .description-preview-section h4 { ... } */ /* Remove or comment out */
+
+/* Styling for the preview <pre> areas */
+/* .description-preview-area { ... } */ /* Remove or comment out */
+
+/* NEW: Styling for the combined preview area */
+.combined-preview-area {
     border: 1px solid #ddd;
-    padding: 10px;
+    padding: 15px;
     background-color: #fff;
     border-radius: 4px;
     word-wrap: break-word;
     font-family: sans-serif;
     font-size: 1em;
-    min-height: 200px;
+    min-height: 300px; /* Match sortable list */
     flex-grow: 1;
     overflow-y: auto;
+    /* white-space: pre-wrap; */ /* Removed for div */
 }
+
+/* Old styles to remove/modify */
+/* #descriptionSortableItems { ... } */ /* Remove or comment out */
+/* #descriptionRenderedPreview { ... } */ /* Remove or comment out */
 
 /* Styles for items within the rendered preview */
-#descriptionRenderedPreview .rendered-item {
-    margin-bottom: 15px;
-}
-
-#descriptionRenderedPreview .rendered-item strong {
-    display: block;
-    margin-bottom: 3px;
-    color: #333;
-}
-
-#descriptionRenderedPreview .rendered-item .rendered-value {
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.95em;
-    white-space: pre-wrap;
-    word-break: break-word;
-    background-color: #f8f9fa;
-    padding: 5px 8px;
-    border-radius: 3px;
-    display: block;
-}
+/* #descriptionRenderedPreview .rendered-item { ... } */ /* Modify if needed for new preview structure */
+/* #descriptionRenderedPreview .rendered-item strong { ... } */
+/* #descriptionRenderedPreview .rendered-item .rendered-value { ... } */
 
 /* Styles for draggable items *within the modal* */
 .description-item-modal {
