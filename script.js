@@ -93,19 +93,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let savedMappings = []; // Array to hold { name: string, json: string, config: object, type: string }
     const LOCAL_STORAGE_KEY = 'fieldMapperSavedMappings';
 
-    processBtn.addEventListener('click', () => {
-        const selectedAttributeType = attributeSelect.value;
-        currentAttributeType = selectedAttributeType;
-
-        // Show/Hide Render Description Button
-        if (currentAttributeType === 'finding') {
-            renderDescriptionLayoutBtn.style.display = 'inline-block'; // Or 'block' if preferred
-        } else {
-            renderDescriptionLayoutBtn.style.display = 'none';
-            closeModal(descriptionModal); // Close modal if switching away from findings
-        }
-
-        // --- Set Field Lists Based on Selection ---
+    // --- NEW: Function to display results based on current state ---
+    function displayProcessedResults() {
+        console.log("Displaying processed results with current mappings:", JSON.stringify(currentMappings));
+        // Ensure field lists are set based on currentAttributeType
         if (currentAttributeType === 'asset') {
             armorCodeFields = assetFields;
             armorCodeFieldsLower = assetFieldsLower;
@@ -115,19 +106,65 @@ document.addEventListener('DOMContentLoaded', () => {
             armorCodeFieldsLower = findingFieldsLower;
             allArmorCodeFieldsWithNone = allFindingFieldsWithNone;
         }
-        // --- End Field List Setup ---
 
+        // Flatten the current JSON input
+        try {
+             const currentJsonData = JSON.parse(jsonInput.value);
+             let recordObject = null;
+             // Simplified logic to find the record object (should match processBtn)
+             if (Array.isArray(currentJsonData.data) && currentJsonData.data.length > 0) recordObject = currentJsonData.data[0];
+             else if (typeof currentJsonData === 'object' && currentJsonData !== null && !Array.isArray(currentJsonData) && !currentJsonData.data) recordObject = currentJsonData;
+             else if(Array.isArray(currentJsonData) && currentJsonData.length > 0) recordObject = currentJsonData[0];
 
-        const jsonString = jsonInput.value.trim();
-        errorMessages.textContent = '';
+             if (!recordObject) {
+                 throw new Error("Could not find suitable record object in JSON.");
+             }
+             flattenedJsonData = flattenObject(recordObject);
+             discoveredJsonKeys = Object.keys(flattenedJsonData);
+        } catch (e) {
+             console.error("Error flattening JSON during display setup:", e);
+             errorMessages.textContent = `Error processing current JSON: ${e.message}`;
+             outputTableContainer.innerHTML = '<p>Error displaying results.</p>';
+             // Hide buttons on error
+             copyBtn.style.display = 'none';
+             saveMappingBtn.style.display = 'none';
+             renderDescriptionLayoutBtn.style.display = 'none';
+             container.classList.remove('results-active');
+             return; // Stop processing
+        }
+
+        // Generate the table using the current state
+        generateTable();
+
+        // Show relevant buttons
+        copyBtn.style.display = 'inline-block';
+        saveMappingBtn.style.display = 'inline-block';
+        if (currentAttributeType === 'finding') {
+            renderDescriptionLayoutBtn.style.display = 'inline-block';
+        }
+        container.classList.add('results-active');
+        displayMappingSummary(); // Update summary
+    }
+
+    // Process Button Listener (Refactored)
+    processBtn.addEventListener('click', () => {
+        // Reset state and UI (moved from loadMapping)
+        flattenedJsonData = {};
+        discoveredJsonKeys = [];
+        currentMappings = {};
+        container.classList.remove('results-active');
         outputTableContainer.innerHTML = '<p>Processing...</p>';
         copyBtn.style.display = 'none';
-        renderDescriptionLayoutBtn.style.display = 'none'; // Hide initially on process
-        container.classList.remove('results-active');
-        discoveredJsonKeys = []; // Reset discovered keys
-        flattenedJsonData = {}; // Reset flattened data
-        currentMappings = {}; // Reset current mappings
+        saveMappingBtn.style.display = 'none';
+        renderDescriptionLayoutBtn.style.display = 'none';
+        closeModal(descriptionModal);
+        clearSummaryDisplay();
+        errorMessages.textContent = '';
 
+        // Set attribute type based on current selection
+        currentAttributeType = attributeSelect.value;
+
+        const jsonString = jsonInput.value.trim();
         if (!jsonString) {
             errorMessages.textContent = 'Please paste JSON data into the input area.';
             outputTableContainer.innerHTML = '<p>Processed results will appear here.</p>';
@@ -135,100 +172,71 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
+            // --- Parse JSON and Find Record --- (Same as before)
             const jsonData = JSON.parse(jsonString);
             let recordObject = null;
+            if (Array.isArray(jsonData.data) && jsonData.data.length > 0) recordObject = jsonData.data[0];
+            else if (typeof jsonData === 'object' && jsonData !== null && !Array.isArray(jsonData) && !jsonData.data) recordObject = jsonData;
+            else if(Array.isArray(jsonData) && jsonData.length > 0) recordObject = jsonData[0];
+            else throw new Error('Could not find a suitable record object.');
 
-            // --- Identify the primary record object ---
-            if (Array.isArray(jsonData.data) && jsonData.data.length > 0) {
-                recordObject = jsonData.data[0];
-            } else if (typeof jsonData === 'object' && jsonData !== null && !Array.isArray(jsonData) && !jsonData.data) {
-                 recordObject = jsonData;
-            } else if(Array.isArray(jsonData) && jsonData.length > 0) {
-                recordObject = jsonData[0];
-            } else {
-                 errorMessages.textContent = 'Could not find a suitable record object (e.g., in jsonData.data[0] or as root object/array) to process.';
-                 outputTableContainer.innerHTML = '<p>Processed results will appear here.</p>';
-                 return;
-            }
-            // --- End Identification ---
-
-            const flattenedRecord = flattenObject(recordObject);
-            flattenedJsonData = flattenedRecord; // Store for later use
-            const initialMappingResults = {}; // Store initial mappings { jsonKey: armorCodeField }
+            // --- Perform Initial Auto-Mapping --- 
+            const tempFlattened = flattenObject(recordObject); // Flatten temporarily for mapping
+            const initialMappingResults = {};
             const mappedJsonKeys = new Set();
-            discoveredJsonKeys = Object.keys(flattenedRecord); // Store keys
+            const tempDiscoveredKeys = Object.keys(tempFlattened);
 
-            // --- Initial Mapping Pass ---
-            for (const key in flattenedRecord) {
-                if (Object.hasOwnProperty.call(flattenedRecord, key)) {
-                    const value = flattenedRecord[key];
-                    const baseKey = key.split('.').pop().toLowerCase();
+            // Initialize currentMappings (based on selected type *before* loop)
+            const fieldsForMapping = currentAttributeType === 'asset' ? assetFields : findingFields;
+            const fieldsForMappingLower = currentAttributeType === 'asset' ? assetFieldsLower : findingFieldsLower;
+            fieldsForMapping.forEach(field => currentMappings[field] = null);
 
-                    if (ignoredKeys.includes(baseKey)) {
-                        continue;
-                    }
-
-                    const mappedField = findMapping(key);
-
-                    // Only store the first mapping found for a given ArmorCode field (excluding 'Tags')
-                    if (mappedField !== 'Tags' && !Object.values(initialMappingResults).includes(mappedField)) {
-                         initialMappingResults[key] = mappedField;
-                         mappedJsonKeys.add(key);
-                    } else if (mappedField === 'Tags' && !mappedJsonKeys.has(key)) {
-                         // Allow 'Tags' mapping only if the key isn't already mapped more specifically
-                         initialMappingResults[key] = 'Tags';
-                         mappedJsonKeys.add(key);
-                    }
-                }
-            }
-
-            // --- Initialize currentMappings ---
-            // Start with all ArmorCode fields unmapped
-            armorCodeFields.forEach(field => currentMappings[field] = null);
-
-            // Define which fields can have multiple mappings (must match handlers)
+            // Define which fields can have multiple mappings (Needed for initial mapping logic here)
             const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact'];
 
-            // Apply initial mappings found above
-            for (const [jsonKey, armorField] of Object.entries(initialMappingResults)) {
-                if (multiMappingFields.includes(armorField)) {
-                    // Handle multi-mapping fields
-                    if (!Array.isArray(currentMappings[armorField])) {
-                        currentMappings[armorField] = []; // Initialize as array if needed
-                    }
-                    if (!currentMappings[armorField].includes(jsonKey)) {
-                        currentMappings[armorField].push(jsonKey);
-                        console.log(`Initial map (multi): Added '${jsonKey}' to ${armorField} array.`);
-                    }
-                } else {
-                    // Handle single-mapping fields (only if not already mapped)
-                    if (currentMappings[armorField] === null) {
-                        currentMappings[armorField] = jsonKey;
-                        console.log(`Initial map (single): Mapped '${armorField}' to '${jsonKey}'.`);
-                    } else {
-                        console.warn(`Initial map conflict: ArmorCode field '${armorField}' already mapped to '${currentMappings[armorField]}'. Key '${jsonKey}' ignored for initial single mapping.`);
+            for (const key in tempFlattened) {
+                if (Object.hasOwnProperty.call(tempFlattened, key)) {
+                    const baseKey = key.split('.').pop().toLowerCase();
+                    if (ignoredKeys.includes(baseKey)) continue;
+                    
+                    // Pass currently selected fields to findMapping context if needed by findMapping itself
+                    const mappedField = findMapping(key, fieldsForMapping, fieldsForMappingLower); 
+                    
+                    // Only store the first mapping found (excluding multi-fields handled later)
+                    if (mappedField && !multiMappingFields.includes(mappedField) && !Object.values(initialMappingResults).includes(mappedField)) {
+                         initialMappingResults[key] = mappedField;
+                         mappedJsonKeys.add(key);
+                    } else if (mappedField && multiMappingFields.includes(mappedField) && !mappedJsonKeys.has(key)) {
+                         // Allow multi-mapping field only if the key isn't already mapped more specifically
+                         initialMappingResults[key] = mappedField;
+                         mappedJsonKeys.add(key);
                     }
                 }
             }
 
-            generateTable(); // Generate the unified table
-
-            copyBtn.style.display = 'block';
-            saveMappingBtn.style.display = 'inline-block'; // Show Save Button
-            // Show render button only if findings were processed successfully
-            if (currentAttributeType === 'finding') {
-                renderDescriptionLayoutBtn.style.display = 'inline-block';
+            // Apply initial mappings to currentMappings
+            for (const [jsonKey, armorField] of Object.entries(initialMappingResults)) {
+                if (multiMappingFields.includes(armorField)) {
+                    if (!Array.isArray(currentMappings[armorField])) currentMappings[armorField] = [];
+                    if (!currentMappings[armorField].includes(jsonKey)) currentMappings[armorField].push(jsonKey);
+                } else {
+                    if (currentMappings[armorField] === null) currentMappings[armorField] = jsonKey;
+                    else console.warn(`Initial map conflict for ${armorField}. Key ${jsonKey} ignored.`);
+                }
             }
-            container.classList.add('results-active');
+            // --- End Initial Auto-Mapping ---
+
+            // Call the display function
+            displayProcessedResults();
 
         } catch (error) {
-            console.error("Processing Error:", error); // Log detailed error
+            console.error("Processing Error:", error);
             errorMessages.textContent = `Error processing JSON: ${error.message}`;
             outputTableContainer.innerHTML = '<p>Processed results will appear here.</p>';
             container.classList.remove('results-active');
             copyBtn.style.display = 'none';
-            renderDescriptionLayoutBtn.style.display = 'none'; // Hide on error
-            saveMappingBtn.style.display = 'none'; // Hide Save button on error
+            saveMappingBtn.style.display = 'none';
+            renderDescriptionLayoutBtn.style.display = 'none';
             clearSummaryDisplay();
         }
     });
@@ -663,15 +671,15 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     }
 
-    function findMapping(jsonKey) {
+    function findMapping(jsonKey, fieldsForMapping, fieldsForMappingLower) {
         // Use the currently active armorCodeFieldsLower for mapping
         const keyLower = jsonKey.split('.').pop().toLowerCase(); // Use the last part of the key for matching
-        const index = armorCodeFieldsLower.indexOf(keyLower);
+        const index = fieldsForMappingLower.indexOf(keyLower);
 
         // 1. Direct Match (case-insensitive)
         if (index !== -1) {
             // Use the currently active armorCodeFields list
-            return armorCodeFields[index]; // Return the original case field name
+            return fieldsForMapping[index]; // Return the original case field name
         }
 
         // 2. Specific Rules & Common Variations (Apply ONLY if findingAttributes is selected)
@@ -702,9 +710,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // This check applies to both finding and asset attributes.
         if (keyLower.includes('tag')) {
              // Check if 'Tags' exists in the current field list
-             const tagsFieldIndex = armorCodeFieldsLower.indexOf('tags');
+             const tagsFieldIndex = fieldsForMappingLower.indexOf('tags');
              if (tagsFieldIndex !== -1) {
-                 return armorCodeFields[tagsFieldIndex]; // Return 'Tags' with correct casing
+                 return fieldsForMapping[tagsFieldIndex]; // Return 'Tags' with correct casing
              }
         }
 
@@ -1593,7 +1601,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     }
 
-    // --- NEW: Load Mapping Function ---
+    // --- NEW: Load Mapping Function (Refactored) ---
     function loadMapping(nameToLoad) {
         const mapping = savedMappings.find(m => m.name === nameToLoad);
         if (!mapping) {
@@ -1624,33 +1632,12 @@ document.addEventListener('DOMContentLoaded', () => {
         closeModal(descriptionModal); // Close modal if open
         clearSummaryDisplay();
 
-        // 5. Simulate clicking the 'Process JSON' button to re-analyze and build the table
-        // This reuses the existing processing logic cleanly.
-        // Need to ensure the event listener exists before dispatching
-        if (processBtn) {
-            // We need to temporarily override the fields list based on the loaded type
-            // before triggering the process click
-            if (currentAttributeType === 'asset') {
-                armorCodeFields = assetFields;
-                armorCodeFieldsLower = assetFieldsLower;
-                allArmorCodeFieldsWithNone = allAssetFieldsWithNone;
-            } else { // Default to 'finding'
-                armorCodeFields = findingFields;
-                armorCodeFieldsLower = findingFieldsLower;
-                allArmorCodeFieldsWithNone = allFindingFieldsWithNone;
-            }
-             // Use setTimeout to ensure the DOM update for attributeSelect.value is processed
-             // before the click event simulation happens.
-             setTimeout(() => {
-                  processBtn.click();
-                  // Optional: Add a visual cue that loading finished
-                  errorMessages.textContent = `Mapping "${nameToLoad}" loaded successfully.`;
-                  setTimeout(() => errorMessages.textContent = '', 3000); // Clear message after 3s
-             }, 0);
-        } else {
-            console.error('Process button not found, cannot reload table.');
-            outputTableContainer.innerHTML = '<p>Error: Process button not found.</p>';
-        }
+        // 5. Display the loaded state *without* re-processing initial mappings
+        displayProcessedResults();
+
+        // Optional: Add a visual cue that loading finished
+        errorMessages.textContent = `Mapping "${nameToLoad}" loaded successfully.`;
+        setTimeout(() => errorMessages.textContent = '', 3000); // Clear message after 3s
     }
 
     // --- NEW: Sidebar Toggle Listener ---
@@ -1695,6 +1682,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initial Load ---
     loadMappingsFromStorage();
     renderSavedMappingsList(); // Renders list and updates badge
-    // Ensure sidebar is expanded by default
-    sidebar.classList.remove('sidebar-collapsed');
+    // Ensure sidebar is collapsed by default
+    sidebar.classList.add('sidebar-collapsed');
 }); 
