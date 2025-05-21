@@ -3,53 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>JSON to ArmorCode Field Mapper</title>
+    <title>ArmorCode Field Mapper</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>JSON to ArmorCode Field Mapper</h1>
+    <header class="global-header">
+        <h1>ArmorCode Field Mapper</h1>
+    </header>
 
     <div class="main-layout">
-        <!-- Sidebar -->
-        <div id="sidebar" class="sidebar">
-            <button id="sidebarToggleBtn" class="sidebar-toggle-btn">
-                <span>&#9776;</span> <!-- Hamburger icon -->
+        <div id="sidebar" class="sidebar-collapsed">
+            <button id="sidebarToggleBtn" title="Toggle Mappings Sidebar">
+                <span>&#9776;</span>
                 <span id="mappingCountBadge" class="mapping-count-badge" style="display: none;">0</span>
             </button>
             <h2>Mappings</h2>
-            <ul id="savedMappingsList"></ul>
+            <ul id="savedMappingsList">
+                <li class="no-mappings"><em>No mappings saved yet.</em></li>
+            </ul>
         </div>
 
-        <!-- Main Content Area -->
         <div class="main-content">
             <div class="container">
                 <div class="input-section">
-                    <label for="jsonInput">Paste JSON Response:</label>
-                    <textarea id="jsonInput" rows="15" placeholder="Paste your JSON data here..."></textarea>
+                    <div class="input-options-header">
+                        <label for="inputTypeSelectorLabel">Select Input Type:</label>
+                    </div>
+                    <div class="input-type-selector" id="inputTypeSelectorLabel">
+                        <label><input type="radio" name="inputType" value="json" checked> JSON</label>
+                        <label><input type="radio" name="inputType" value="csv"> CSV</label>
+                    </div>
 
-                    <label for="attributeTypeSelect">Select Attribute Type:</label>
-                    <select id="attributeTypeSelect" name="attributeType">
-                        <option value="finding" selected>Finding Attributes</option>
-                        <option value="asset">Asset Attributes</option>
-                    </select>
+                    <div id="jsonInputArea">
+                        <label for="jsonInput">Paste JSON Response:</label>
+                        <textarea id="jsonInput" placeholder="Paste your JSON data here (e.g., the first record from an API response if it's an array under a 'data' key, or the whole object if it's a single record). The tool will attempt to find the main record."></textarea>
+                    </div>
 
+                    <div id="csvInputArea" style="display: none;">
+                        <label for="fileInputCsv">Upload CSV File:</label>
+                        <input type="file" id="fileInputCsv" accept=".csv">
+                        <span id="fileNameDisplayCsv" class="file-name-display"></span>
+                    </div>
+                    
+                    <div class="input-options">
+                        <label for="attributeTypeSelect">Select Attribute Type:</label>
+                        <select id="attributeTypeSelect">
+                            <option value="finding" selected>Finding Attributes</option>
+                            <option value="asset">Asset Attributes</option>
+                        </select>
+                    </div>
+                    
                     <button id="processBtn">Process JSON</button>
+                    <div id="errorMessages" class="error-messages"></div>
                 </div>
 
                 <div class="output-section">
                     <h2>Mapping Results</h2>
                     <div id="outputTableContainer">
-                        <!-- Table will be generated here -->
                         <p>Processed results will appear here.</p>
                     </div>
-                    <!-- Button Group -->
                     <div class="button-group">
-                        <button id="copyBtn" style="display: none;">Copy Table</button>
-                        <button id="renderDescriptionLayoutBtn" style="display: none;">Render Description Layout</button>
-                        <button id="saveMappingBtn" style="display: none;" class="sidebar-button">Save Mapping</button>
+                        <button id="copyBtn" style="display: none;">Copy Mapped Table</button>
+                        <button id="renderDescriptionLayoutBtn" style="display: none;">Arrange & Preview Description</button>
+                        <button id="saveMappingBtn" style="display: none;">Save Current Mapping</button>
                     </div>
-                    <!-- End Button Group -->
-                    <div id="errorMessages" class="error"></div>
                 </div>
             </div>
 

@@ -1,7 +1,35 @@
 body {
     font-family: sans-serif;
-    margin: 20px;
+    margin: 0; /* Remove default body margin */
     background-color: #f4f4f4;
+    display: flex; /* For centering the global header and managing layout */
+    flex-direction: column; /* Stack header and main content */
+    min-height: 100vh; /* Ensure body takes full viewport height */
+}
+
+/* NEW: Global Header Styling */
+.global-header {
+    background-color: #333; /* Dark background for header */
+    color: white;
+    padding: 15px 20px;
+    text-align: center;
+    width: 100%; /* Full width */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px; /* Space below the header */
+}
+
+.global-header h1 {
+    margin: 0;
+    font-size: 1.8em;
+    color: #ffffff; /* Explicitly set white color for the h1 text */
+}
+
+/* Adjusting main layout margin if needed now that body has 0 margin */
+.main-layout {
+    padding: 0 20px 20px 20px; /* Add padding around the main layout, not top */
+    width: 100%;
+    box-sizing: border-box;
+    flex-grow: 1; /* Allow main layout to grow and fill space */
 }
 
 h1 {
@@ -58,7 +86,7 @@ textarea {
     border-radius: 4px;
     font-size: 14px;
     resize: vertical; /* Allow vertical resize */
-    min-height: 100px; /* Ensure a minimum height */
+    min-height: 150px; /* Restore a larger min-height */
     flex-grow: 1; /* Allow textarea to grow */
 }
 
@@ -76,10 +104,10 @@ textarea {
     font-weight: 500;
     text-transform: uppercase;
     transition: background-color 0.3s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.2);
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.2);
     margin-top: 0;
     align-self: auto;
-    margin-left: 10px;
+    margin-left: 0; /* Remove individual left margins, rely on gap */
     background-color: #1976D2; /* Default Blue */
 }
 
@@ -91,33 +119,21 @@ textarea {
     box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.2);
 }
 
-#copyBtn {
-    margin-left: 0; /* No left margin for the first button */
-}
-
 /* Style for the attribute type selection */
-.attribute-type-selection {
-    margin-top: 15px;
-    margin-bottom: 15px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: #f9f9f9;
+.input-options { /* Renamed from .attribute-type-selection for clarity */
+    margin-bottom: 10px; /* Reduced margin */
+    /* padding: 10px; */ /* Removed padding */
+    /* border: 1px solid #ccc; */ /* Removed border */
+    /* background-color: #f9f9f9; */ /* Removed background */
 }
 
-.attribute-type-selection label {
+.input-options label { /* Target label within input-options */
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 5px; /* Reduced margin */
     font-weight: bold;
 }
 
-.attribute-type-selection div {
-    margin-bottom: 5px;
-}
-
-.attribute-type-selection input[type="radio"] {
-    margin-right: 5px;
-}
+/* Removed .attribute-type-selection div and input[type="radio"] styles as they are not used */
 
 .output-section h2 {
     margin-top: 0; /* Remove default margin */
@@ -198,7 +214,7 @@ td[contenteditable="true"]:focus {
     background-color: #FF9800; /* Material Orange 500 */
     color: white;
     /* Match styles with #copyBtn */
-    margin-left: 10px; /* Space it from the copy button */
+    margin-left: 0; /* Remove individual left margins, rely on gap */
     padding: 10px 24px; /* Same padding */
     border: none;
     border-radius: 4px;
@@ -207,7 +223,7 @@ td[contenteditable="true"]:focus {
     font-weight: 500; /* Same font weight */
     text-transform: uppercase; /* Same text transform */
     transition: background-color 0.3s ease, box-shadow 0.2s ease;
-    box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.2); /* Same shadow */
+    box-shadow: 0 4px 5px 0 rgba(0,0,0,0.14), 0 1px 10px 0 rgba(0,0,0,0.12), 0 2px 4px -1px rgba(0,0,0,0.2); /* Same shadow */
     margin-top: 15px; /* Same margin-top */
     align-self: flex-start; /* Same alignment */
     vertical-align: top; /* Align with the top of the copy button if needed */
@@ -452,15 +468,20 @@ td[contenteditable="true"]:focus {
 /* Button Group Container */
 .button-group {
     display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap */
     gap: 10px;
     margin-top: 15px;
-    align-items: flex-start;
+    /* align-items: flex-start; */ /* Removed to allow default stretch or specific button alignment */
 }
 
 /* Adjust individual button styles */
-#copyBtn, #renderDescriptionLayoutBtn, #saveMappingBtn {
+#processBtn,
+#copyBtn, 
+#renderDescriptionLayoutBtn, 
+#saveMappingBtn {
     margin-top: 0;
-    align-self: auto;
+    align-self: auto; 
+    margin-left: 0; /* Remove individual left margins, rely on gap */
 }
 
 /* NEW: Main Layout Container */
@@ -480,56 +501,57 @@ td[contenteditable="true"]:focus {
     overflow-y: auto; /* Scroll if content overflows */
     display: flex;
     flex-direction: column;
-    transition: flex-basis 0.3s ease-in-out, padding 0.3s ease-in-out; /* Smooth transition */
+    transition: flex-basis 0.3s ease-in-out, padding 0.3s ease-in-out, transform 0.3s ease-in-out;
+    position: relative; /* This is correct for positioning the toggle button absolutely within it */
 }
 
 /* NEW: Sidebar Toggle Button Styles */
 .sidebar-toggle-btn {
-    position: absolute; /* Position relative to sidebar */
+    position: absolute; 
     top: 10px;
-    left: 10px; /* Position on the left */
-    right: auto; /* Remove right positioning */
+    left: 10px; 
     background: none;
     border: none;
-    font-size: 1.8em; /* Larger icon */
-    color: #6c757d; /* Grey color */
+    font-size: 1.8em; 
+    color: #6c757d; 
     cursor: pointer;
     padding: 0 5px;
-    z-index: 10; /* Ensure it's above other sidebar content */
+    z-index: 10; 
     line-height: 1;
+    display: flex; 
+    align-items: center;
+    justify-content: center;
+    position: relative; /* ADDED: Make this the positioning context for the badge */
 }
 
 .sidebar-collapsed .sidebar-toggle-btn {
-    /* Adjust position slightly if needed when collapsed */
-    left: 5px; /* Adjust left position for collapsed state */
+    /* No specific adjustment needed if always positioned at top-left of sidebar area */
 }
 
 .mapping-count-badge {
-    position: absolute;
-    top: -5px; /* Position relative to the button */
-    right: -8px;
-    background-color: #dc3545; /* Red badge background */
+    position: absolute; 
+    top: -7px; /* Adjusted for better visibility */
+    right: -10px; /* Adjusted for better visibility */
+    background-color: #dc3545; 
     color: white;
-    font-size: 0.5em; /* Smaller font size for badge */
+    font-size: 0.6em; /* Slightly larger for emphasis */
     font-weight: bold;
-    padding: 2px 5px;
-    border-radius: 50%; /* Circular badge */
-    min-width: 18px; /* Ensure minimum size */
+    padding: 3px 6px; /* Adjusted padding */
+    border-radius: 50%; 
+    min-width: 20px; /* Ensure it's a good size */
     text-align: center;
-    line-height: 1.2;
+    line-height: 1;
+    border: 1px solid white; /* Optional: add a border for more pop */
+    box-shadow: 0 0 5px rgba(0,0,0,0.3); /* Optional: slight shadow */
+    z-index: 1; /* Ensure badge is above the button's other content (like the hamburger span) */
 }
-
-/* Hide toggle button text span by default if needed */
-/* .sidebar-toggle-btn > span:first-child { ... } */
 
 /* Collapsed state for the sidebar */
 .sidebar-collapsed {
-    flex-basis: 50px; /* Adjusted width for button + padding */
-    padding: 5px; /* Minimal padding */
-    overflow: hidden; /* Hide content */
-    background-color: transparent; /* Hide background */
-    box-shadow: none; /* Hide shadow */
-    border: none; /* Hide any potential border */
+    flex-basis: 50px; /* Width when collapsed, enough for the button */
+    padding: 10px 5px; /* Minimal padding when collapsed */
+    overflow: hidden;
+    /* transform: translateX(-200px); Remove transform for collapse, use flex-basis */
 }
 
 .sidebar-collapsed h2,
@@ -537,15 +559,19 @@ td[contenteditable="true"]:focus {
     display: none; /* Hide title and list when collapsed */
 }
 
-.sidebar h2 {
-    margin-top: 0;
-    /* Adjust padding to accommodate toggle on the left */
-    padding-top: 0; 
-    padding-left: 40px; /* Add left padding to title */
+.sidebar h2 { /* Styles for the "Mappings" title */
+    margin-top: 40px; /* Ensure space below the toggle button */
+    padding-left: 0; /* Remove old padding-left if any */
     margin-bottom: 15px;
     text-align: center;
-    color: #495057; /* Darker grey text */
+    color: #495057; 
     font-size: 1.3em;
+    display: block; /* Ensure it's visible when sidebar is not collapsed */
+}
+
+/* Ensure toggle button itself doesn't get hidden when sidebar collapses */
+.sidebar-collapsed .sidebar-toggle-btn {
+    /* Adjustments if needed, but usually keeping it visible and within the new flex-basis is fine */
 }
 
 #copyBtn,
@@ -620,4 +646,148 @@ td[contenteditable="true"]:focus {
 .main-content {
     flex: 1; /* Take remaining space */
     /* The container inside will handle its own layout */
+}
+
+.button-group button:hover {
+    background-color: #0056b3;
+}
+
+.button-group button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* New styles for file input area */
+.file-input-area {
+    margin-bottom: 10px; /* Reduced margin */
+    padding: 10px; /* Reduced padding */
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.file-input-area label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+.file-input-area input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.file-name-display {
+    display: block;
+    margin-top: 8px;
+    font-style: italic;
+    color: #555;
+    font-size: 0.9em;
+}
+
+/* OR Separator */
+.or-separator {
+    text-align: center;
+    margin: 15px 0; /* Reduced margin */
+    font-weight: bold;
+    color: #777;
+    display: flex;
+    align-items: center;
+}
+
+.or-separator span {
+    padding: 0 10px;
+    background-color: #fff; /* Match main background */
+    position: relative;
+    z-index: 1;
+}
+
+.or-separator::before,
+.or-separator::after {
+    content: "";
+    flex-grow: 1;
+    height: 1px;
+    background-color: #ddd;
+    margin: 0 10px;
+}
+
+/* Error Messages */
+.error-messages {
+    color: red;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+/* NEW: Styles for Input Type Selector */
+.input-type-selector {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f0f0f0; /* Light background for the selector itself */
+    border-radius: 5px;
+}
+
+.input-type-selector label {
+    font-weight: normal;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.input-type-selector input[type="radio"] {
+    margin-right: 5px;
+}
+
+/* Styles for JSON and CSV input areas */
+#jsonInputArea label,
+#csvInputArea label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #333;
+}
+
+#csvInputArea input[type="file"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+/* Removed styles for .file-input-area and .or-separator as they are no longer used */
+
+/* Error Messages */
+#processBtn,
+#copyBtn, 
+#renderDescriptionLayoutBtn, 
+#saveMappingBtn {
+    margin-top: 0;
+    align-self: auto; 
+    margin-left: 0; /* Remove individual left margins, rely on gap */
+    padding: 10px 15px; /* Adjust padding for all buttons in group */
+    font-size: 0.9em; /* Slightly smaller font for buttons */
+}
+
+/* NEW: Main Layout Container */
+.main-layout {
+    display: flex;
+    gap: 20px;
+}
+
+/* NEW: Styles for Input Options Header (label for radio group) */
+.input-options-header {
+    margin-bottom: 8px; /* Space below the label */
+}
+
+.input-options-header label {
+    font-weight: bold;
+    font-size: 1.05em; /* Slightly larger font for this heading label */
+    color: #333;
 } 

@@ -4,10 +4,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const outputTableContainer = document.getElementById('outputTableContainer');
     const errorMessages = document.getElementById('errorMessages');
     const copyBtn = document.getElementById('copyBtn');
-    const renderDescriptionLayoutBtn = document.getElementById('renderDescriptionLayoutBtn'); // New button
-    const container = document.querySelector('.container'); // Get the main container
-    const outputSection = document.querySelector('.output-section'); // Get output section
+    const renderDescriptionLayoutBtn = document.getElementById('renderDescriptionLayoutBtn');
+    const container = document.querySelector('.container');
+    const outputSection = document.querySelector('.output-section');
     const attributeSelect = document.getElementById('attributeTypeSelect');
+
+    // --- NEW: Input Type Handling Elements ---
+    const inputTypeRadios = document.querySelectorAll('input[name="inputType"]');
+    const jsonInputArea = document.getElementById('jsonInputArea');
+    const csvInputArea = document.getElementById('csvInputArea');
+    const fileInputCsv = document.getElementById('fileInputCsv');
+    const fileNameDisplayCsv = document.getElementById('fileNameDisplayCsv');
+
+    // --- State for input type ---
+    let currentInputMode = 'json'; // Default to JSON
 
     // Description Modal Elements
     const descriptionModal = document.getElementById('descriptionModal');
@@ -43,6 +53,56 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentMappings = {};
     // Store the selected attribute type
     let currentAttributeType = 'finding'; // Default to finding
+
+    let uploadedFileContent = null;
+    let uploadedFileType = null; // 'json' or 'csv' - this might be simplified if only one file input active at a time
+    let currentRecordObjectForSave = null; // To store the processed record for saving
+
+    // --- NEW: Listener for Input Type Change ---
+    inputTypeRadios.forEach(radio => {
+        radio.addEventListener('change', (event) => {
+            currentInputMode = event.target.value;
+            errorMessages.textContent = ''; // Clear errors on mode switch
+            uploadedFileContent = null; // Clear any previously uploaded file content
+            
+            if (currentInputMode === 'json') {
+                jsonInputArea.style.display = 'block';
+                csvInputArea.style.display = 'none';
+                processBtn.textContent = 'Process JSON';
+                fileNameDisplayCsv.textContent = ''; // Clear CSV file name display
+                fileInputCsv.value = ''; // Reset file input
+            } else if (currentInputMode === 'csv') {
+                jsonInputArea.style.display = 'none';
+                csvInputArea.style.display = 'block';
+                processBtn.textContent = 'Process CSV';
+                jsonInput.value = ''; // Clear JSON text area
+            }
+        });
+    });
+
+    // --- NEW: Listener for CSV File Input ---
+    fileInputCsv.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                uploadedFileContent = e.target.result;
+                // For CSV input, we strictly expect CSV type based on this input field.
+                // No need to guess uploadedFileType like before.
+                fileNameDisplayCsv.textContent = file.name;
+                errorMessages.textContent = ''; // Clear previous errors
+            };
+            reader.onerror = () => {
+                errorMessages.textContent = 'Error reading CSV file.';
+                uploadedFileContent = null;
+                fileNameDisplayCsv.textContent = '';
+            };
+            reader.readAsText(file);
+        } else {
+            uploadedFileContent = null;
+            fileNameDisplayCsv.textContent = '';
+        }
+    });
 
     // --- Armor Code Asset Fields ---
     const assetFields = [
@@ -93,6 +153,57 @@ document.addEventListener('DOMContentLoaded', () => {
     let savedMappings = []; // Array to hold { name: string, json: string, config: object, type: string }
     const LOCAL_STORAGE_KEY = 'fieldMapperSavedMappings';
 
+    // --- NEW: Function to parse CSV to an array of objects ---
+    function parseCsv(csvString) {
+        // Normalize line endings to \n and then split
+        const lines = csvString.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim().split('\n');
+        
+        if (lines.length === 0 || (lines.length === 1 && lines[0].trim() === '')) {
+            console.warn("CSV string is empty or contains only whitespace after normalization.");
+            return [];
+        }
+
+        // Extract headers: split by comma, trim whitespace from each header
+        const headers = lines[0].split(',').map(header => header.trim());
+        
+        // Validate headers
+        if (headers.length === 0 || (headers.length === 1 && headers[0] === '')) {
+            console.warn("CSV headers are empty or invalid.");
+            return []; // No valid headers
+        }
+        if (headers.some(header => header === '')) {
+            console.warn("CSV contains empty header fields. This might cause issues.");
+            // Depending on strictness, you might choose to throw an error or filter them out
+        }
+
+        const records = [];
+
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (line === '') continue; // Skip empty lines
+
+            // Simple split by comma for values. For more complex CSVs (e.g., with commas in quotes), a more robust parser would be needed.
+            const values = line.split(',').map(value => value.trim());
+            
+            if (values.length === headers.length) {
+                const record = {};
+                headers.forEach((header, index) => {
+                    // Ensure we don't try to assign to an empty header key
+                    if (header) { 
+                        record[header] = values[index];
+                    }
+                });
+                // Only add record if it has at least one property (in case all headers were empty and skipped)
+                if (Object.keys(record).length > 0) {
+                    records.push(record);
+                }
+            } else {
+                console.warn(`Skipping CSV line ${i + 1}: Mismatch in number of columns. Expected ${headers.length}, got ${values.length}. Line content: "${line}"`);
+            }
+        }
+        return records;
+    }
+
     // --- NEW: Function to display results based on current state ---
     function displayProcessedResults() {
         console.log("Displaying processed results with current mappings:", JSON.stringify(currentMappings));
@@ -107,19 +218,12 @@ document.addEventListener('DOMContentLoaded', () => {
             allArmorCodeFieldsWithNone = allFindingFieldsWithNone;
         }
 
-        // Flatten the current JSON input
+        // Flatten the current record object for save
         try {
-             const currentJsonData = JSON.parse(jsonInput.value);
-             let recordObject = null;
-             // Simplified logic to find the record object (should match processBtn)
-             if (Array.isArray(currentJsonData.data) && currentJsonData.data.length > 0) recordObject = currentJsonData.data[0];
-             else if (typeof currentJsonData === 'object' && currentJsonData !== null && !Array.isArray(currentJsonData) && !currentJsonData.data) recordObject = currentJsonData;
-             else if(Array.isArray(currentJsonData) && currentJsonData.length > 0) recordObject = currentJsonData[0];
-
-             if (!recordObject) {
-                 throw new Error("Could not find suitable record object in JSON.");
-             }
-             flattenedJsonData = flattenObject(recordObject);
+            if (!currentRecordObjectForSave) {
+                 throw new Error("No record object available to display. Process input first.");
+            }
+             flattenedJsonData = flattenObject(currentRecordObjectForSave); // Use the stored record object
              discoveredJsonKeys = Object.keys(flattenedJsonData);
         } catch (e) {
              console.error("Error flattening JSON during display setup:", e);
@@ -148,10 +252,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Process Button Listener (Refactored)
     processBtn.addEventListener('click', () => {
-        // Reset state and UI (moved from loadMapping)
+        // Reset state and UI
         flattenedJsonData = {};
         discoveredJsonKeys = [];
-        currentMappings = {};
+        currentMappings = {}; 
+        currentRecordObjectForSave = null; 
         container.classList.remove('results-active');
         outputTableContainer.innerHTML = '<p>Processing...</p>';
         copyBtn.style.display = 'none';
@@ -161,24 +266,56 @@ document.addEventListener('DOMContentLoaded', () => {
         clearSummaryDisplay();
         errorMessages.textContent = '';
 
-        // Set attribute type based on current selection
         currentAttributeType = attributeSelect.value;
 
-        const jsonString = jsonInput.value.trim();
-        if (!jsonString) {
-            errorMessages.textContent = 'Please paste JSON data into the input area.';
-            outputTableContainer.innerHTML = '<p>Processed results will appear here.</p>';
-            return;
+        let inputDataString = '';
+        let processingMode = currentInputMode; // Use the selected mode
+
+        if (processingMode === 'csv') {
+            if (!uploadedFileContent) {
+                errorMessages.textContent = 'Please select a CSV file to process.';
+                outputTableContainer.innerHTML = '<p>Processed results will appear here.</p>';
+                return;
+            }
+            inputDataString = uploadedFileContent;
+            console.log(`Processing CSV file: ${fileNameDisplayCsv.textContent}`);
+        } else { // Default to JSON processing
+            inputDataString = jsonInput.value.trim();
+            console.log(`Processing text area input (JSON)`);
+            if (!inputDataString) {
+                errorMessages.textContent = 'Please paste JSON data.';
+                outputTableContainer.innerHTML = '<p>Processed results will appear here.</p>';
+                return;
+            }
         }
 
         try {
-            // --- Parse JSON and Find Record --- (Same as before)
-            const jsonData = JSON.parse(jsonString);
+            let jsonData; 
+            if (processingMode === 'csv') {
+                const parsedCsv = parseCsv(inputDataString);
+                if (parsedCsv.length === 0) {
+                    throw new Error('CSV file is empty or could not be parsed correctly.');
+                }
+                jsonData = parsedCsv; 
+            } else { // JSON processing
+                jsonData = JSON.parse(inputDataString);
+            }
+
+            // --- Find Record --- (Modified to handle array from CSV or JSON array)
             let recordObject = null;
-            if (Array.isArray(jsonData.data) && jsonData.data.length > 0) recordObject = jsonData.data[0];
-            else if (typeof jsonData === 'object' && jsonData !== null && !Array.isArray(jsonData) && !jsonData.data) recordObject = jsonData;
-            else if(Array.isArray(jsonData) && jsonData.length > 0) recordObject = jsonData[0];
-            else throw new Error('Could not find a suitable record object.');
+            if (Array.isArray(jsonData)) {
+                if (jsonData.length > 0) recordObject = jsonData[0]; // Use first element if array
+                else throw new Error('Input array is empty.');
+            } else if (typeof jsonData === 'object' && jsonData !== null && jsonData.data && Array.isArray(jsonData.data)) {
+                 if (jsonData.data.length > 0) recordObject = jsonData.data[0];
+                 else throw new Error('Input array under \'data\' key is empty.');
+            } else if (typeof jsonData === 'object' && jsonData !== null) {
+                recordObject = jsonData; // It's already a single object
+            } else {
+                throw new Error('Could not find a suitable record object in the input.');
+            }
+
+            currentRecordObjectForSave = recordObject; // Store the determined record object for later use (e.g. saving)
 
             // --- Perform Initial Auto-Mapping --- 
             const tempFlattened = flattenObject(recordObject); // Flatten temporarily for mapping
@@ -1516,7 +1653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function addMapping(name, json, config, type) {
+    function addMapping(name, json, config, type, sourceType = 'json-paste') {
         // Check for duplicate name (case-insensitive)
         const existingIndex = savedMappings.findIndex(m => m.name.toLowerCase() === name.toLowerCase());
         if (existingIndex !== -1) {
@@ -1531,7 +1668,8 @@ document.addEventListener('DOMContentLoaded', () => {
             name: name,
             json: json,
             config: JSON.parse(JSON.stringify(config)), // Deep copy of config
-            type: type
+            type: type,
+            sourceType: sourceType // 'json-paste', 'json-file', 'csv-file'
         };
         savedMappings.push(newMapping);
         savedMappings.sort((a, b) => a.name.localeCompare(b.name)); // Keep sorted
@@ -1643,12 +1781,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- NEW: Sidebar Toggle Listener ---
     sidebarToggleBtn.addEventListener('click', () => {
         sidebar.classList.toggle('sidebar-collapsed');
-        // Optionally update badge visibility based on collapsed state
-        const isCollapsed = sidebar.classList.contains('sidebar-collapsed');
+        // Ensure badge visibility is correctly updated based on count, regardless of collapsed state
         const count = savedMappings.length;
-        // Show badge if collapsed and count > 0, or always if count > 0
         mappingCountBadge.style.display = count > 0 ? 'inline-block' : 'none'; 
-        // Alternatively: mappingCountBadge.style.display = (isCollapsed && count > 0) ? 'inline-block' : 'none';
+        // The line above correctly handles showing the badge if count > 0, whether collapsed or not.
+        // The commented-out line below was an alternative consideration and is not needed.
+        // mappingCountBadge.style.display = (sidebar.classList.contains('sidebar-collapsed') && count > 0) ? 'inline-block' : 'none';
     });
 
     // --- Re-applying Save Button Listener ---
@@ -1656,27 +1794,38 @@ document.addEventListener('DOMContentLoaded', () => {
     saveMappingBtn.addEventListener('click', () => {
         // Check if mappings exist (i.e., after processing)
         if (!currentMappings || Object.keys(currentMappings).length === 0) {
-            alert('Please process some JSON and configure mappings before saving.');
+            alert('Please process some JSON/CSV and configure mappings before saving.');
+            return;
+        }
+        if (!currentRecordObjectForSave) { 
+            alert('No processed data available to save. Please process input first.');
             return;
         }
 
         const mappingName = prompt('Enter a name for this mapping configuration:');
         if (!mappingName || mappingName.trim() === '') {
-            // Silently cancel if prompt is empty or cancelled
-            // alert('Save cancelled. Please provide a valid name.'); 
             return;
         }
 
-        const jsonToSave = jsonInput.value;
+        const jsonToSave = JSON.stringify(currentRecordObjectForSave, null, 2); 
+        let sourceTypeOfSave = 'json-paste'; // Default
+
+        if (currentInputMode === 'csv' && uploadedFileContent) { 
+            sourceTypeOfSave = 'csv-file';
+        } else if (currentInputMode === 'json') { 
+            // If JSON mode, it implies either paste or potentially a JSON file upload if we were to add that back.
+            // For now, this logic correctly identifies pasted JSON vs CSV file.
+            sourceTypeOfSave = 'json-paste'; // Or determine if it was from a JSON file if that feature is re-added
+        }
+        
         const configToSave = currentMappings;
         const typeToSave = currentAttributeType;
 
-        if (addMapping(mappingName.trim(), jsonToSave, configToSave, typeToSave)) {
-            renderSavedMappingsList(); // Update the list if save/overwrite was successful
-            alert(`Mapping "${mappingName.trim()}" saved successfully!`);
-             // Optionally expand sidebar if it was collapsed
+        if (addMapping(mappingName.trim(), jsonToSave, configToSave, typeToSave, sourceTypeOfSave)) {
+            renderSavedMappingsList(); 
+            alert(`Mapping \"${mappingName.trim()}\" saved successfully!`);
              sidebar.classList.remove('sidebar-collapsed'); 
-        } // User cancellation on overwrite is handled within addMapping
+        }
     });
 
     // --- Initial Load ---
