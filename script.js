@@ -111,7 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
         "Cloud Resource Type", "Location", "Image Repo", "Registry",
         "Cluster", "Namespace", "Cloud Resource", "Publicly Accessible", "Region",
         "Runtime", "Architecture", "VPC ID", "Role", "Version", "Storage Type",
-        "Engine Version", "Engine", "Instance Status", "Subnet IDs"
+        "Engine Version", "Engine", "Instance Status", "Subnet IDs",
+        "Last Seen", "Asset Subtype", "MAC Address" // Added new fields
     ];
     const assetFieldsLower = assetFields.map(field => field.toLowerCase());
     const allAssetFieldsWithNone = ['None', ...assetFields];
@@ -121,8 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const armorCodeFieldCategories = {
         "Core": ["ID", "Summary", "CVE", "CWE", "Category", "Finding URL", "Description", "Steps to Reproduce", "Impact", "Remediation", "Component Name", "Component Affected Version", "Component Fix Version", "Tags"],
         "Tool Details": ["Tool Finding ID", "Tool Severity", "Tool Finding Status", "Tool Finding Category", "Fixable Using Tool"],
-        "Risk & Severity": ["Severity", "Base Score", "CVSS Vector", "Exploit Maturity", "Exploited", "CISA KEV"],
-        "Status & Dates": ["Status", "Latest Tool Scan Date", "Found On", "Last Seen Date"],
+        "Risk & Severity": ["Severity", "Base Score", "CVSS Vector", "Exploit Maturity", "Exploited", "CISA KEV", "EPSS Score", "EPSS Percentile"],
+        "Status & Dates": ["Status", "Latest Tool Scan Date", "Found On", "Last Seen Date", "CVE Published Date", "CVE Modified Date"],
         "Asset & Environment": ["File Name", "Device", "URL/Endpoint", "Image Name", "IP Addresses", "Repository"],
     };
 
@@ -329,7 +330,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fieldsForMapping.forEach(field => currentMappings[field] = null);
 
             // Define which fields can have multiple mappings (Needed for initial mapping logic here)
-            const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact'];
+            const multiMappingFields = ['Tags', 'IP Address', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact', 'DNS Name']; // Corrected to IP Address (singular)
 
             for (const key in tempFlattened) {
                 if (Object.hasOwnProperty.call(tempFlattened, key)) {
@@ -835,10 +836,20 @@ document.addEventListener('DOMContentLoaded', () => {
             if (keyLower === 'image_name') return 'Image Name';
             // Removed 'tool_name'/'scanner' mapping to 'Source Tool' as it's not a standard finding field
             if (keyLower === 'status') return 'Status'; // Map 'status' directly if finding
+            // New EPSS and CVE Date mappings
+            if (keyLower === 'epss_score' || keyLower === 'epssscore') return 'EPSS Score';
+            if (keyLower === 'epss_percentile' || keyLower === 'epsspercentile') return 'EPSS Percentile';
+            if (keyLower === 'cve_published_date' || keyLower === 'cve_published' || keyLower === 'published_date' || keyLower === 'publish_date') return 'CVE Published Date';
+            if (keyLower === 'cve_modified_date' || keyLower === 'cve_modified' || keyLower === 'modified_date' || keyLower === 'last_modified_date') return 'CVE Modified Date';
         } else if (currentAttributeType === 'asset') {
              // Add specific asset mapping rules here if needed in the future
              // Example: if (keyLower === 'operating_system') return 'OS';
             if (keyLower === 'tags') return 'Tags'; // Map 'tags' directly if asset
+            if (keyLower === 'last_seen' || keyLower === 'lastseen') return 'Last Seen';
+            if (keyLower === 'asset_subtype' || keyLower === 'assetsubtype' || keyLower === 'asset_sub_type') return 'Asset Subtype';
+            if (keyLower === 'mac_address' || keyLower === 'macaddress') return 'MAC Address';
+            if (keyLower === 'ip' || keyLower === 'ip_address' || keyLower === 'host_ip') return 'IP Address'; // Ensure IP Address is correctly mapped for assets too
+            if (keyLower === 'dns_name' || keyLower === 'dnsname' || keyLower === 'hostname') return 'DNS Name'; // Ensure DNS Name is correctly mapped for assets
         }
 
 
@@ -1178,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`AC Change: Row JSON Key: ${originalJsonKey}, New AC Field: ${newArmorCodeField}, Is Placeholder Row: ${isUnmappedAcRow}`);
 
         // Define which fields can have multiple mappings
-        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact'];
+        const multiMappingFields = ['Tags', 'IP Address', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact', 'DNS Name']; // Corrected to IP Address (singular)
 
         if (isUnmappedAcRow) {
             // --- Handling change on a placeholder AC row ---
@@ -1280,7 +1291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log(`JSON Key Change: Target AC Field '${targetArmorCodeField}', Selected JSON Key: '${selectedJsonKey}'`);
 
         // Define which fields can have multiple mappings
-        const multiMappingFields = ['Tags', 'IP Addresses', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact'];
+        const multiMappingFields = ['Tags', 'IP Address', 'URL/Endpoint', 'Repository', 'Description', 'Steps to Reproduce', 'Remediation', 'Impact', 'DNS Name']; // Corrected to IP Address (singular)
 
         // 1. Clear any previous mapping *for this specific ArmorCode field*
         if (currentMappings[targetArmorCodeField]) {

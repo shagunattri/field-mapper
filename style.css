@@ -507,9 +507,9 @@ td[contenteditable="true"]:focus {
 
 /* NEW: Sidebar Toggle Button Styles */
 .sidebar-toggle-btn {
-    position: absolute; 
-    top: 10px;
-    left: 10px; 
+    /* position: absolute; */ /* Ensure this is removed or commented out */
+    /* top: 10px; */      /* Ensure this is removed or commented out */
+    /* left: 10px; */     /* Ensure this is removed or commented out */
     background: none;
     border: none;
     font-size: 1.8em; 
@@ -521,29 +521,17 @@ td[contenteditable="true"]:focus {
     display: flex; 
     align-items: center;
     justify-content: center;
-    position: relative; /* ADDED: Make this the positioning context for the badge */
+    position: relative; /* This is the key for anchoring the badge */
+    align-self: flex-start; /* Prevent stretching to full sidebar width */
 }
 
 .sidebar-collapsed .sidebar-toggle-btn {
     /* No specific adjustment needed if always positioned at top-left of sidebar area */
-}
-
-.mapping-count-badge {
-    position: absolute; 
-    top: -7px; /* Adjusted for better visibility */
-    right: -10px; /* Adjusted for better visibility */
-    background-color: #dc3545; 
-    color: white;
-    font-size: 0.6em; /* Slightly larger for emphasis */
-    font-weight: bold;
-    padding: 3px 6px; /* Adjusted padding */
-    border-radius: 50%; 
-    min-width: 20px; /* Ensure it's a good size */
     text-align: center;
     line-height: 1;
     border: 1px solid white; /* Optional: add a border for more pop */
     box-shadow: 0 0 5px rgba(0,0,0,0.3); /* Optional: slight shadow */
-    z-index: 1; /* Ensure badge is above the button's other content (like the hamburger span) */
+    z-index: 11; /* Ensure badge is above the button */
 }
 
 /* Collapsed state for the sidebar */
